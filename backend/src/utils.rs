@@ -38,15 +38,12 @@ pub fn asset_dir() -> std::path::PathBuf {
     if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets")
     } else {
-        ProjectDirs::from("", "", "automagik-forge")
-            .expect("OS didn't give us a home directory")
-            .data_dir()
-            .to_path_buf()
+        dirs::home_dir()
+            .expect("Could not find home directory")
+            .join(".automagik-forge")
     }
 
-    // ✔ Linux → ~/.local/share/automagik-forge
-    // ✔ macOS → ~/Library/Application Support/automagik-forge  
-    // ✔ Windows → %APPDATA%\automagik-forge
+    // ✔ All platforms → ~/.automagik-forge
 }
 
 pub fn config_path() -> std::path::PathBuf {
@@ -54,18 +51,16 @@ pub fn config_path() -> std::path::PathBuf {
 }
 
 pub fn cache_dir() -> std::path::PathBuf {
-    let proj = if cfg!(debug_assertions) {
-        ProjectDirs::from("", "", "automagik-forge-dev")
-            .expect("OS didn't give us a home directory")
+    if cfg!(debug_assertions) {
+        std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets/.cache")
     } else {
-        ProjectDirs::from("", "", "automagik-forge")
-            .expect("OS didn't give us a home directory")
-    };
+        dirs::home_dir()
+            .expect("Could not find home directory")
+            .join(".automagik-forge")
+            .join("cache")
+    }
 
-    // ✔ Linux → ~/.cache/automagik-forge
-    // ✔ macOS → ~/Library/Caches/automagik-forge
-    // ✔ Windows → %LOCALAPPDATA%\automagik-forge
-    proj.cache_dir().to_path_buf()
+    // ✔ All platforms → ~/.automagik-forge/cache
 }
 
 /// Get or create cached PowerShell script file
