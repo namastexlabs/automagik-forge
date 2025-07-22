@@ -38,15 +38,15 @@ pub fn asset_dir() -> std::path::PathBuf {
     if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets")
     } else {
-        ProjectDirs::from("ai", "namastex", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("", "", "automagik-forge")
             .expect("OS didn't give us a home directory")
             .data_dir()
             .to_path_buf()
     }
 
-    // ✔ macOS → ~/Library/Application Support/MyApp
-    // ✔ Linux → ~/.local/share/myapp   (respects XDG_DATA_HOME)
-    // ✔ Windows → %APPDATA%\Example\MyApp
+    // ✔ Linux → ~/.local/share/automagik-forge
+    // ✔ macOS → ~/Library/Application Support/automagik-forge  
+    // ✔ Windows → %APPDATA%\automagik-forge
 }
 
 pub fn config_path() -> std::path::PathBuf {
@@ -55,16 +55,16 @@ pub fn config_path() -> std::path::PathBuf {
 
 pub fn cache_dir() -> std::path::PathBuf {
     let proj = if cfg!(debug_assertions) {
-        ProjectDirs::from("ai", "namastex-dev", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("", "", "automagik-forge-dev")
             .expect("OS didn't give us a home directory")
     } else {
-        ProjectDirs::from("ai", "namastex", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("", "", "automagik-forge")
             .expect("OS didn't give us a home directory")
     };
 
-    // ✔ macOS → ~/Library/Caches/MyApp
-    // ✔ Linux → ~/.cache/myapp (respects XDG_CACHE_HOME)
-    // ✔ Windows → %LOCALAPPDATA%\Example\MyApp
+    // ✔ Linux → ~/.cache/automagik-forge
+    // ✔ macOS → ~/Library/Caches/automagik-forge
+    // ✔ Windows → %LOCALAPPDATA%\automagik-forge
     proj.cache_dir().to_path_buf()
 }
 
