@@ -132,7 +132,7 @@ export function McpServers() {
     }
   };
 
-  const handleConfigureVibeKanban = async () => {
+  const handleConfigureAutomagikForge = async () => {
     if (!selectedMcpExecutor) return;
 
     try {
@@ -144,22 +144,22 @@ export function McpServers() {
         selectedMcpExecutor === 'sst-opencode'
           ? {
               type: 'local',
-              command: ['npx', '-y', 'vibe-kanban', '--mcp'],
+              command: ['npx', '-y', 'automagik-forge', '--mcp'],
               enabled: true,
             }
           : {
               command: 'npx',
-              args: ['-y', 'vibe-kanban', '--mcp'],
+              args: ['-y', 'automagik-forge', '--mcp'],
             };
 
-      // Add vibe_kanban to the existing configuration
+      // Add automagik_forge to the existing configuration
       let updatedConfig;
       if (selectedMcpExecutor === 'amp') {
         updatedConfig = {
           ...existingConfig,
           'amp.mcpServers': {
             ...(existingConfig['amp.mcpServers'] || {}),
-            vibe_kanban: vibeKanbanConfig,
+            automagik_forge: vibeKanbanConfig,
           },
         };
       } else if (selectedMcpExecutor === 'sst-opencode') {
@@ -167,7 +167,7 @@ export function McpServers() {
           ...existingConfig,
           mcp: {
             ...(existingConfig.mcp || {}),
-            vibe_kanban: vibeKanbanConfig,
+            automagik_forge: vibeKanbanConfig,
           },
         };
       } else {
@@ -175,7 +175,7 @@ export function McpServers() {
           ...existingConfig,
           mcpServers: {
             ...(existingConfig.mcpServers || {}),
-            vibe_kanban: vibeKanbanConfig,
+            automagik_forge: vibeKanbanConfig,
           },
         };
       }
@@ -185,8 +185,8 @@ export function McpServers() {
       setMcpServers(configJson);
       setMcpError(null);
     } catch (err) {
-      setMcpError('Failed to configure vibe-kanban MCP server');
-      console.error('Error configuring vibe-kanban:', err);
+      setMcpError('Failed to configure automagik-forge MCP server');
+      console.error('Error configuring automagik-forge:', err);
     }
   };
 
@@ -380,14 +380,14 @@ export function McpServers() {
 
                 <div className="pt-4">
                   <Button
-                    onClick={handleConfigureVibeKanban}
+                    onClick={handleConfigureAutomagikForge}
                     disabled={mcpApplying || mcpLoading || !selectedMcpExecutor}
                     className="w-64"
                   >
-                    Add Vibe-Kanban MCP
+                    Add Automagik-Forge MCP
                   </Button>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Automatically adds the Vibe-Kanban MCP server.
+                    Automatically adds the Automagik-Forge MCP server.
                   </p>
                 </div>
               </div>

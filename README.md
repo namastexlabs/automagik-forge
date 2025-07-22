@@ -1,24 +1,24 @@
 <p align="center">
-  <a href="https://vibekanban.com">
+  <a href="https://automagikforge.com">
     <picture>
-      <source srcset="frontend/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="frontend/public/automagik-forge-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="frontend/public/automagik-forge-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="frontend/public/automagik-forge-logo.svg" alt="Automagik Forge Logo">
     </picture>
   </a>
 </p>
 
 <p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
-  <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/bloopai/vibe-kanban/.github%2Fworkflows%2Fpublish.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://www.npmjs.com/package/automagik-forge"><img alt="npm" src="https://img.shields.io/npm/v/automagik-forge?style=flat-square" /></a>
+  <a href="https://github.com/BloopAI/automagik-forge/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/bloopai/automagik-forge/.github%2Fworkflows%2Fpublish.yml?style=flat-square&branch=dev" /></a>
 </p>
 
-![](frontend/public/vibe-kanban-screenshot-overview.png)
+![](frontend/public/automagik-forge-screenshot-overview.png)
 
 ## Overview
 
-AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Automagik Forge streamlines this process, enabling you to:
 
 - Easily switch between different coding agents
 - Orchestrate the execution of multiple coding agents in parallel or in sequence
@@ -30,15 +30,15 @@ You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
 ## Installation
 
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/). Then in your terminal run:
+Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://automagikforge.com/). Then in your terminal run:
 
 ```bash
-npx vibe-kanban
+npx automagik-forge
 ```
 
 ## Documentation
 
-Please head to the [website](https://vibekanban.com) for the latest documentation and user guides.
+Please head to the [website](https://automagikforge.com) for the latest documentation and user guides.
 
 ## Support
 
@@ -93,7 +93,7 @@ The following environment variables can be configured at build time or runtime:
 
 #### Custom GitHub OAuth App (Optional)
 
-By default, Vibe Kanban uses Bloop AI's GitHub OAuth app for authentication. To use your own GitHub app for self-hosting or custom branding:
+By default, Automagik Forge uses Bloop AI's GitHub OAuth app for authentication. To use your own GitHub app for self-hosting or custom branding:
 
 1. Create a GitHub OAuth App at [GitHub Developer Settings](https://github.com/settings/developers)
 2. Enable "Device Flow" in the app settings
@@ -102,3 +102,9 @@ By default, Vibe Kanban uses Bloop AI's GitHub OAuth app for authentication. To 
    ```bash
    GITHUB_CLIENT_ID=your_client_id_here pnpm run build
    ```
+
+## Attribution
+
+This project is a fork of [vibe-kanban](https://github.com/BloopAI/vibe-kanban), modified for use as an AI agent execution substrate in the automagik ecosystem.
+
+Original project by BloopAI - Licensed under the [MIT License](LICENSE).

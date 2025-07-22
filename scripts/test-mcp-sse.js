@@ -9,7 +9,7 @@ async function testMcpSseIntegration() {
     // Set test environment
     process.env.MCP_SSE_PORT = '8765';
     
-    const mcpBinary = path.join(__dirname, '../backend/target/debug/vibe-kanban-mcp');
+const mcpBinary = path.join(__dirname, '../backend/target/debug/automagik-forge-mcp');
     
     console.log('Starting MCP SSE server for testing...');
     const mcpProcess = spawn(mcpBinary, ['--mcp-sse'], {

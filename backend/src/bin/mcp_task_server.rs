@@ -4,7 +4,7 @@ use rmcp::{transport::{stdio, sse_server::SseServer}, ServiceExt};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{prelude::*, EnvFilter};
-use vibe_kanban::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
+use automagik_forge::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
 
 fn main() -> anyhow::Result<()> {
     // Parse command line arguments

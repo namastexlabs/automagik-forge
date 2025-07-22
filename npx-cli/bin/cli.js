@@ -99,7 +99,7 @@ function extractAndRun(baseName, launch) {
 }
 
 if (isMcpMode || isMcpSseMode) {
-  extractAndRun("vibe-kanban-mcp", (bin) => {
+  extractAndRun("automagik-forge-mcp", (bin) => {
     const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : [];
     console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
     
@@ -121,7 +121,7 @@ if (isMcpMode || isMcpSseMode) {
   });
 } else {
   // Start both main backend server and MCP SSE server concurrently
-  console.log(`📦 Extracting vibe-kanban and vibe-kanban-mcp...`);
+  console.log(`📦 Extracting automagik-forge and automagik-forge-mcp...`);
   
   // Set environment variables for proper port configuration
   process.env.MCP_SSE_PORT = "23002";
@@ -153,7 +153,7 @@ if (isMcpMode || isMcpSseMode) {
   };
   
   // Extract and start main backend server
-  extractAndRun("vibe-kanban", (mainBin) => {
+  extractAndRun("automagik-forge", (mainBin) => {
     console.log(`🚀 Starting main backend server on http://0.0.0.0:23001...`);
     mainServerProc = spawn(mainBin, [], { 
       stdio: ["pipe", "pipe", "pipe"],
@@ -180,7 +180,7 @@ if (isMcpMode || isMcpSseMode) {
     });
     
     // Extract and start MCP SSE server
-    extractAndRun("vibe-kanban-mcp", (mcpBin) => {
+    extractAndRun("automagik-forge-mcp", (mcpBin) => {
       console.log(`🚀 Starting MCP SSE server on http://0.0.0.0:23002/sse...`);
       mcpServerProc = spawn(mcpBin, ["--mcp-sse"], { 
         stdio: ["pipe", "pipe", "pipe"],

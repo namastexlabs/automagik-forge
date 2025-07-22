@@ -43,7 +43,7 @@ export function PrivacyOptInDialog({
             <DialogTitle>Feedback Opt-In</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-1">
-            Help us improve Vibe Kanban by sharing usage data and allowing us to
+            Help us improve Automagik Forge by sharing usage data and allowing us to
             contact you if needed.
           </DialogDescription>
         </DialogHeader>
@@ -121,7 +121,7 @@ export function PrivacyOptInDialog({
           </Button>
           <Button onClick={handleOptIn} className="flex-1">
             <CheckCircle className="h-4 w-4 mr-2" />
-            Yes, help improve Vibe Kanban
+            Yes, help improve Automagik Forge
           </Button>
         </DialogFooter>
       </DialogContent>
