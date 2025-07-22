@@ -48,7 +48,7 @@ pub struct DevicePollRequest {
     )
 )]
 pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
-    let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
+    let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
 
     let params = [("client_id", client_id), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
@@ -116,7 +116,7 @@ pub async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<String>> {
-    let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
+    let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
 
     let params = [
         ("client_id", client_id),

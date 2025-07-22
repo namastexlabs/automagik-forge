@@ -81,7 +81,7 @@ The following environment variables can be configured at build time or runtime:
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `GITHUB_CLIENT_ID` | Build-time | `Ov23li9bxz3kKfPOIsGm` | GitHub OAuth app client ID for authentication |
+| `GITHUB_CLIENT_ID` | Runtime | `Ov23li2nd1KF5nCPbgoj` | GitHub OAuth app client ID for authentication |
 | `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
 | `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
 | `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port |
