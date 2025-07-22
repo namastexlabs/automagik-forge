@@ -186,7 +186,12 @@ if (isMcpMode || isMcpSseMode) {
     console.log(`🚀 Starting main backend server on http://${host}:${backendPort}...`);
     mainServerProc = spawn(mainBin, [], { 
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env }
+      env: { 
+        ...process.env,
+        BACKEND_PORT: backendPort,
+        PORT: backendPort,
+        HOST: host
+      }
     });
     
     mainServerProc.stdout.on("data", (data) => {
@@ -213,7 +218,11 @@ if (isMcpMode || isMcpSseMode) {
       console.log(`🚀 Starting MCP SSE server on http://${host}:${mcpSsePort}/sse...`);
       mcpServerProc = spawn(mcpBin, ["--mcp-sse"], { 
         stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env }
+        env: { 
+          ...process.env,
+          MCP_SSE_PORT: mcpSsePort,
+          HOST: host
+        }
       });
       
       mcpServerProc.stdout.on("data", (data) => {
