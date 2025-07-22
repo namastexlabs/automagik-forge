@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::executors::{
     AmpExecutor, CCRExecutor, CharmOpencodeExecutor, ClaudeExecutor, EchoExecutor, GeminiExecutor,
-    SetupScriptExecutor, SstOpencodeExecutor,
+    OpencodeAiExecutor, SetupScriptExecutor, SstOpencodeExecutor,
 };
 
 // Constants for database streaming - fast for near-real-time updates
@@ -410,6 +410,7 @@ pub enum ExecutorConfig {
     CharmOpencode,
     #[serde(alias = "opencode")]
     SstOpencode,
+    OpencodeAi,
 }
 
 // Constants for frontend
@@ -433,6 +434,7 @@ impl FromStr for ExecutorConfig {
             "charm-opencode" => Ok(ExecutorConfig::CharmOpencode),
             "claude-code-router" => Ok(ExecutorConfig::ClaudeCodeRouter),
             "sst-opencode" => Ok(ExecutorConfig::SstOpencode),
+            "opencode-ai" => Ok(ExecutorConfig::OpencodeAi),
             "setup-script" => Ok(ExecutorConfig::SetupScript {
                 script: "setup script".to_string(),
             }),
@@ -452,6 +454,7 @@ impl ExecutorConfig {
             ExecutorConfig::ClaudeCodeRouter => Box::new(CCRExecutor::new()),
             ExecutorConfig::CharmOpencode => Box::new(CharmOpencodeExecutor),
             ExecutorConfig::SstOpencode => Box::new(SstOpencodeExecutor::new()),
+            ExecutorConfig::OpencodeAi => Box::new(OpencodeAiExecutor),
             ExecutorConfig::SetupScript { script } => {
                 Box::new(SetupScriptExecutor::new(script.clone()))
             }
@@ -485,6 +488,9 @@ impl ExecutorConfig {
                     dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
                 }
             }
+            ExecutorConfig::OpencodeAi => {
+                dirs::home_dir().map(|home| home.join(".opencode-ai.json"))
+            }
             ExecutorConfig::SetupScript { .. } => None,
         }
     }
@@ -500,6 +506,7 @@ impl ExecutorConfig {
             ExecutorConfig::Amp => Some(vec!["amp", "mcpServers"]), // Nested path for Amp
             ExecutorConfig::Gemini => Some(vec!["mcpServers"]),
             ExecutorConfig::ClaudeCodeRouter => Some(vec!["mcpServers"]),
+            ExecutorConfig::OpencodeAi => Some(vec!["mcpServers"]),
             ExecutorConfig::SetupScript { .. } => None, // Setup scripts don't support MCP
         }
     }
@@ -523,6 +530,7 @@ impl ExecutorConfig {
             ExecutorConfig::Amp => "Amp",
             ExecutorConfig::Gemini => "Gemini",
             ExecutorConfig::ClaudeCodeRouter => "Claude Code Router",
+            ExecutorConfig::OpencodeAi => "OpenCode AI",
             ExecutorConfig::SetupScript { .. } => "Setup Script",
         }
     }
@@ -539,6 +547,7 @@ impl std::fmt::Display for ExecutorConfig {
             ExecutorConfig::SstOpencode => "sst-opencode",
             ExecutorConfig::CharmOpencode => "charm-opencode",
             ExecutorConfig::ClaudeCodeRouter => "claude-code-router",
+            ExecutorConfig::OpencodeAi => "opencode-ai",
             ExecutorConfig::SetupScript { .. } => "setup-script",
         };
         write!(f, "{}", s)

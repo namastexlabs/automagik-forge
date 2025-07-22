@@ -6,6 +6,7 @@ pub mod cleanup_script;
 pub mod dev_server;
 pub mod echo;
 pub mod gemini;
+pub mod opencode_ai;
 pub mod setup_script;
 pub mod sst_opencode;
 
@@ -17,5 +18,6 @@ pub use cleanup_script::CleanupScriptExecutor;
 pub use dev_server::DevServerExecutor;
 pub use echo::EchoExecutor;
 pub use gemini::GeminiExecutor;
+pub use opencode_ai::OpencodeAiExecutor;
 pub use setup_script::SetupScriptExecutor;
 pub use sst_opencode::SstOpencodeExecutor;
