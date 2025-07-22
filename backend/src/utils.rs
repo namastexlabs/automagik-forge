@@ -38,7 +38,7 @@ pub fn asset_dir() -> std::path::PathBuf {
     if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets")
     } else {
-        ProjectDirs::from("ai", "bloop", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("ai", "namastex", env!("CARGO_PKG_NAME"))
             .expect("OS didn't give us a home directory")
             .data_dir()
             .to_path_buf()
@@ -55,10 +55,10 @@ pub fn config_path() -> std::path::PathBuf {
 
 pub fn cache_dir() -> std::path::PathBuf {
     let proj = if cfg!(debug_assertions) {
-        ProjectDirs::from("ai", "bloop-dev", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("ai", "namastex-dev", env!("CARGO_PKG_NAME"))
             .expect("OS didn't give us a home directory")
     } else {
-        ProjectDirs::from("ai", "bloop", env!("CARGO_PKG_NAME"))
+        ProjectDirs::from("ai", "namastex", env!("CARGO_PKG_NAME"))
             .expect("OS didn't give us a home directory")
     };
 
