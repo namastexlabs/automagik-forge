@@ -152,10 +152,10 @@ if (isMcpMode || isMcpSseMode) {
   console.log(`📦 Extracting automagik-forge and automagik-forge-mcp...`);
   
   // Environment variables are loaded from .env file
-  // Use defaults matching .env file if not specified
+  // Use safe defaults (localhost only) unless overridden
   const mcpSsePort = process.env.MCP_SSE_PORT || "8889";
   const backendPort = process.env.BACKEND_PORT || process.env.PORT || "8887";
-  const host = process.env.HOST || "0.0.0.0";
+  const host = process.env.HOST || "127.0.0.1";
   
   let mainServerProc, mcpServerProc;
   let shutdownInProgress = false;
