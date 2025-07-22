@@ -136,12 +136,24 @@ fn main() -> anyhow::Result<()> {
     } else {
         "production"
     };
-    let _guard = sentry::init(("https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937", sentry::ClientOptions {
-        release: sentry::release_name!(),
-        environment: Some(environment.into()),
-        attach_stacktrace: true,
-        ..Default::default()
-    }));
+    // Check if telemetry is disabled
+    let telemetry_disabled = std::env::var("DISABLE_TELEMETRY")
+        .unwrap_or_default()
+        .to_lowercase() == "true";
+    
+    let _guard = if !telemetry_disabled {
+        let sentry_dsn = std::env::var("SENTRY_DSN")
+            .unwrap_or_else(|_| "https://fa5e961d24021da4e6df30e5beee03af@o4509714066571264.ingest.us.sentry.io/4509714113495040".to_string());
+        
+        Some(sentry::init((sentry_dsn, sentry::ClientOptions {
+            release: sentry::release_name!(),
+            environment: Some(environment.into()),
+            attach_stacktrace: true,
+            ..Default::default()
+        })))
+    } else {
+        None
+    };
     sentry::configure_scope(|scope| {
         scope.set_tag("source", "server");
     });

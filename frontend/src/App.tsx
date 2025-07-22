@@ -8,7 +8,6 @@ import { Settings } from '@/pages/Settings';
 import { McpServers } from '@/pages/McpServers';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { PrivacyOptInDialog } from '@/components/PrivacyOptInDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { EditorType, ExecutorConfig } from 'shared/types';
@@ -23,7 +22,6 @@ function AppContent() {
   const { config, updateConfig, loading } = useConfig();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showPrivacyOptIn, setShowPrivacyOptIn] = useState(false);
   const [showGitHubLogin, setShowGitHubLogin] = useState(false);
   const showNavbar = true;
 
@@ -35,8 +33,6 @@ function AppContent() {
         if (config.onboarding_acknowledged) {
           if (!config.github_login_acknowledged) {
             setShowGitHubLogin(true);
-          } else if (!config.telemetry_acknowledged) {
-            setShowPrivacyOptIn(true);
           }
         }
       }
@@ -80,24 +76,6 @@ function AppContent() {
     }
   };
 
-  const handlePrivacyOptInComplete = async (telemetryEnabled: boolean) => {
-    if (!config) return;
-
-    const updatedConfig = {
-      ...config,
-      telemetry_acknowledged: true,
-      analytics_enabled: telemetryEnabled,
-    };
-
-    updateConfig(updatedConfig);
-
-    try {
-      await configApi.saveConfig(updatedConfig);
-      setShowPrivacyOptIn(false);
-    } catch (err) {
-      console.error('Error saving config:', err);
-    }
-  };
 
   const handleGitHubLoginComplete = async () => {
     try {
@@ -116,10 +94,6 @@ function AppContent() {
       await configApi.saveConfig(updatedConfig);
     } catch (err) {
       console.error('Error refreshing config:', err);
-    } finally {
-      if (!config?.telemetry_acknowledged) {
-        setShowPrivacyOptIn(true);
-      }
     }
   };
 
@@ -145,10 +119,6 @@ function AppContent() {
         <OnboardingDialog
           open={showOnboarding}
           onComplete={handleOnboardingComplete}
-        />
-        <PrivacyOptInDialog
-          open={showPrivacyOptIn}
-          onComplete={handlePrivacyOptInComplete}
         />
         {showNavbar && <Navbar />}
         <div className="flex-1 overflow-y-scroll">

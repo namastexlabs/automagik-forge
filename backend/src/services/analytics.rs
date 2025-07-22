@@ -16,8 +16,24 @@ pub struct AnalyticsConfig {
 
 impl AnalyticsConfig {
     pub fn new(user_enabled: bool) -> Self {
-        let api_key = option_env!("POSTHOG_API_KEY").unwrap_or_default();
-        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT").unwrap_or_default();
+        // Check if telemetry is disabled via environment
+        let telemetry_disabled = std::env::var("DISABLE_TELEMETRY")
+            .unwrap_or_default()
+            .to_lowercase() == "true";
+
+        if telemetry_disabled {
+            return Self {
+                posthog_api_key: String::new(),
+                posthog_api_endpoint: String::new(),
+                enabled: false,
+            };
+        }
+
+        // Use hardcoded keys with environment override
+        let api_key = option_env!("POSTHOG_API_KEY")
+            .unwrap_or("phc_KYI6y57aVECNO9aj5O28gNAz3r7BU0cTtEf50HQJZHd");
+        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")
+            .unwrap_or("https://us.i.posthog.com");
 
         let enabled = user_enabled && !api_key.is_empty() && !api_endpoint.is_empty();
 

@@ -7,7 +7,7 @@
     "automagik-forge": "bin/cli.js"
   },
   "keywords": [],
-  "author": "bloop",
+  "author": "Namastex Labs",
   "license": "",
   "description": "NPX wrapper around automagik-forge and automagik-forge-mcp",
   "files": [

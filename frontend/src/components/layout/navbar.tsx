@@ -70,7 +70,7 @@ export function Navbar() {
             </Button>
             <Button asChild variant="ghost" size="sm">
               <a
-                href="https://github.com/BloopAI/automagik-forge/issues"
+                href="https://github.com/namastexlabs/automagik-forge/issues"
                 target="_blank"
                 rel="noopener noreferrer"
               >
