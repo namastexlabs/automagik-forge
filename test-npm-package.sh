@@ -16,10 +16,10 @@ npm pack --dry-run
 echo "📦 Creating package tarball..."
 npm pack
 
-TARBALL=$(pwd)/$(ls vibe-kanban-*.tgz | head -n1)
+TARBALL=$(pwd)/$(ls automagik-forge-*.tgz | head -n1)
 
 echo "🧪 Testing main command..."
-npx -y --package=$TARBALL vibe-kanban &
+npx -y --package=$TARBALL automagik-forge &
 MAIN_PID=$!
 sleep 3
 kill $MAIN_PID 2>/dev/null || true
@@ -39,4 +39,4 @@ echo "🎉 Your MCP server is working correctly!"
 echo "📋 Next steps:"
 echo "   1. cd npx-cli"
 echo "   2. npm publish"
-echo "   3. Users can then use: npx vibe-kanban --mcp with Claude Desktop"
+echo "   3. Users can then use: npx automagik-forge --mcp with Claude Desktop"

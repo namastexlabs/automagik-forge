@@ -132,7 +132,7 @@ export function GitHubLoginDialog({
           </div>
           <DialogDescription className="text-left pt-1">
             Connect your GitHub account to create and manage pull requests
-            directly from Vibe Kanban.
+            directly from Automagik Forge.
           </DialogDescription>
         </DialogHeader>
         {loading ? (

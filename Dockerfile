@@ -40,4 +40,4 @@ EXPOSE 3000
 # Run the application
 WORKDIR /repos
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/app/target/release/vibe-kanban"]
+CMD ["/app/target/release/automagik-forge"]

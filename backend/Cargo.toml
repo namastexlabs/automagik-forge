@@ -1,12 +1,12 @@
 [package]
-name = "vibe-kanban"
+name = "automagik-forge"
 version = "0.0.55"
 edition = "2021"
-default-run = "vibe-kanban"
+default-run = "automagik-forge"
 build = "build.rs"
 
 [lib]
-name = "vibe_kanban"
+name = "automagik_forge"
 path = "src/lib.rs"
 
 [lints.clippy]

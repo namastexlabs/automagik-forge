@@ -994,8 +994,8 @@ mod tests {
     fn test_claude_log_normalization() {
         let claude_executor = ClaudeExecutor::new();
         let claude_logs = r#"{"type":"system","subtype":"init","cwd":"/private/tmp/mission-control-worktree-8ff34214-7bb4-4a5a-9f47-bfdf79e20368","session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9","tools":["Task","Bash","Glob","Grep","LS","exit_plan_mode","Read","Edit","MultiEdit","Write","NotebookRead","NotebookEdit","WebFetch","TodoRead","TodoWrite","WebSearch"],"mcp_servers":[],"model":"claude-sonnet-4-20250514","permissionMode":"bypassPermissions","apiKeySource":"none"}
-{"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I'll help you list your projects using vibe-kanban. Let me first explore the codebase to understand how vibe-kanban works and find your projects."}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}
-{"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","id":"toolu_01Br3TvXdmW6RPGpB5NihTHh","name":"Task","input":{"description":"Find vibe-kanban projects","prompt":"I need to find and list projects using vibe-kanban."}}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}"#;
+{"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I'll help you list your projects using automagik-forge. Let me first explore the codebase to understand how automagik-forge works and find your projects."}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}
+{"type":"assistant","message":{"id":"msg_014xUHgkAhs6cRx5WVT3s7if","type":"message","role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"tool_use","id":"toolu_01Br3TvXdmW6RPGpB5NihTHh","name":"Task","input":{"description":"Find automagik-forge projects","prompt":"I need to find and list projects using automagik-forge."}}],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":4,"cache_creation_input_tokens":13497,"cache_read_input_tokens":0,"output_tokens":1,"service_tier":"standard"}},"parent_tool_use_id":null,"session_id":"499dcce4-04aa-4a3e-9e0c-ea0228fa87c9"}"#;
 
         let result = claude_executor
             .normalize_logs(claude_logs, "/tmp/test-worktree")
@@ -1038,6 +1038,6 @@ mod tests {
         assert!(task_tool_use.is_some());
         let task_tool_use = task_tool_use.unwrap();
         // Should be the task description, not "Tool: Task with input: ..."
-        assert_eq!(task_tool_use.content, "Find vibe-kanban projects");
+        assert_eq!(task_tool_use.content, "Find automagik-forge projects");
     }
 }

@@ -281,12 +281,12 @@ impl TaskAttempt {
         Ok(())
     }
 
-    /// Get the base directory for vibe-kanban worktrees
+    /// Get the base directory for automagik-forge worktrees
     pub fn get_worktree_base_dir() -> std::path::PathBuf {
         let dir_name = if cfg!(debug_assertions) {
-            "vibe-kanban-dev"
+            "automagik-forge-dev"
         } else {
-            "vibe-kanban"
+            "automagik-forge"
         };
 
         if cfg!(target_os = "macos") {
@@ -296,7 +296,7 @@ impl TaskAttempt {
             // Linux: use /var/tmp instead of /tmp to avoid RAM usage
             std::path::PathBuf::from("/var/tmp").join(dir_name)
         } else {
-            // Windows and other platforms: use temp dir with vibe-kanban subdirectory
+            // Windows and other platforms: use temp dir with automagik-forge subdirectory
             std::env::temp_dir().join(dir_name)
         }
     }
@@ -436,7 +436,7 @@ impl TaskAttempt {
         task_id: Uuid,
     ) -> Result<Self, TaskAttemptError> {
         let attempt_id = Uuid::new_v4();
-        // let prefixed_id = format!("vibe-kanban-{}", attempt_id);
+        // let prefixed_id = format!("automagik-forge-{}", attempt_id);
 
         // First, get the task to get the project_id
         let task = Task::find_by_id(pool, task_id)
@@ -451,7 +451,7 @@ impl TaskAttempt {
             task_title_id
         );
 
-        // Generate worktree path using vibe-kanban specific directory
+        // Generate worktree path using automagik-forge specific directory
         let worktree_path = Self::get_worktree_base_dir().join(&task_attempt_branch);
         let worktree_path_str = worktree_path.to_string_lossy().to_string();
 
@@ -520,7 +520,7 @@ impl TaskAttempt {
         let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 
         // Create commit message with task title and description
-        let mut commit_message = format!("{} (vibe-kanban {})", task_title, first_uuid_section);
+        let mut commit_message = format!("{} (automagik-forge {})", task_title, first_uuid_section);
 
         // Add description on next line if it exists
         if let Some(description) = task_description {
