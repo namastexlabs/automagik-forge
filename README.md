@@ -102,3 +102,9 @@ By default, Automagik Forge uses Bloop AI's GitHub OAuth app for authentication.
    ```bash
    GITHUB_CLIENT_ID=your_client_id_here pnpm run build
    ```
+
+## Attribution
+
+This project is a fork of [vibe-kanban](https://github.com/BloopAI/vibe-kanban), modified for use as an AI agent execution substrate in the automagik ecosystem.
+
+Original project by BloopAI - Licensed under the [MIT License](LICENSE).
