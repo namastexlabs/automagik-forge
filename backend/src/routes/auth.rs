@@ -50,7 +50,7 @@ pub struct DevicePollRequest {
 pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
 
-    let params = [("client_id", client_id), ("scope", "user:email,repo")];
+    let params = [("client_id", client_id.as_str()), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
     let res = client
         .post("https://github.com/login/device/code")
@@ -119,7 +119,7 @@ pub async fn device_poll(
     let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
 
     let params = [
-        ("client_id", client_id),
+        ("client_id", client_id.as_str()),
         ("device_code", payload.device_code.as_str()),
         ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
     ];
