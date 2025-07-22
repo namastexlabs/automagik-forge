@@ -2,9 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, ToSchema)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[ts(export)]
@@ -16,7 +17,7 @@ pub enum TaskStatus {
     Cancelled,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct Task {
     pub id: Uuid,
@@ -29,7 +30,7 @@ pub struct Task {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct TaskWithAttemptStatus {
     pub id: Uuid,
@@ -46,7 +47,7 @@ pub struct TaskWithAttemptStatus {
     pub latest_attempt_executor: Option<String>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateTask {
     pub project_id: Uuid,
@@ -55,7 +56,7 @@ pub struct CreateTask {
     pub parent_task_attempt: Option<Uuid>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateTaskAndStart {
     pub project_id: Uuid,
@@ -65,7 +66,7 @@ pub struct CreateTaskAndStart {
     pub executor: Option<crate::executor::ExecutorConfig>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct UpdateTask {
     pub title: Option<String>,

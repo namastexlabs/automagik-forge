@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
 };
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::{app_state::AppState, models::ApiResponse};
 
@@ -16,10 +17,10 @@ pub fn auth_router() -> Router<AppState> {
         .route("/auth/github/check", get(github_check_token))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, ToSchema)]
 struct DeviceStartRequest {}
 
-#[derive(serde::Serialize, TS)]
+#[derive(serde::Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct DeviceStartResponse {
     pub device_code: String,
@@ -29,13 +30,24 @@ pub struct DeviceStartResponse {
     pub interval: u32,
 }
 
-#[derive(serde::Deserialize)]
-struct DevicePollRequest {
+#[derive(serde::Deserialize, ToSchema)]
+pub struct DevicePollRequest {
     device_code: String,
 }
 
 /// POST /auth/github/device/start
-async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
+#[utoipa::path(
+    post,
+    path = "/auth/github/device/start",
+    tag = "auth",
+    summary = "Start GitHub OAuth device flow",
+    description = "Initiates GitHub OAuth device authorization flow, returning device and user codes",
+    responses(
+        (status = 200, description = "Device authorization flow started successfully", body = ApiResponse<DeviceStartResponse>),
+        (status = 500, description = "Failed to contact GitHub or parse response", body = ApiResponse<String>)
+    )
+)]
+pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
     let client_id = option_env!("GITHUB_CLIENT_ID").unwrap_or("Ov23li9bxz3kKfPOIsGm");
 
     let params = [("client_id", client_id), ("scope", "user:email,repo")];
@@ -88,7 +100,19 @@ async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
 }
 
 /// POST /auth/github/device/poll
-async fn device_poll(
+#[utoipa::path(
+    post,
+    path = "/auth/github/device/poll",
+    tag = "auth",
+    summary = "Poll GitHub OAuth device flow",
+    description = "Polls GitHub for OAuth device flow completion and saves access token",
+    request_body = DevicePollRequest,
+    responses(
+        (status = 200, description = "GitHub login successful or still pending", body = ApiResponse<String>),
+        (status = 400, description = "OAuth error or invalid device code", body = ApiResponse<String>)
+    )
+)]
+pub async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<String>> {
@@ -230,7 +254,18 @@ async fn device_poll(
 }
 
 /// GET /auth/github/check
-async fn github_check_token(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<()>> {
+#[utoipa::path(
+    get,
+    path = "/auth/github/check",
+    tag = "auth",
+    summary = "Check GitHub token validity",
+    description = "Validates the stored GitHub access token by making a test API call",
+    responses(
+        (status = 200, description = "GitHub token is valid"),
+        (status = 400, description = "GitHub token is invalid or missing")
+    )
+)]
+pub async fn github_check_token(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<()>> {
     let config = app_state.get_config().read().await;
     let token = config.github.token.clone();
     drop(config);

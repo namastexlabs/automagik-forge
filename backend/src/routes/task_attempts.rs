@@ -9,6 +9,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use ts_rs::TS;
+use utoipa;
 use uuid::Uuid;
 
 use crate::{
@@ -216,6 +217,20 @@ pub async fn get_task_attempt_all_logs(
     Ok(Json(ApiResponse::success(result)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{project_id}/tasks/{task_id}/attempts",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("task_id" = String, Path, description = "Task ID")
+    ),
+    responses(
+        (status = 200, description = "List all task attempts", body = ApiResponse<Vec<TaskAttempt>>),
+        (status = 404, description = "Project or task not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_attempts"
+)]
 pub async fn get_task_attempts(
     Extension(_project): Extension<Project>,
     Extension(task): Extension<Task>,
@@ -230,6 +245,22 @@ pub async fn get_task_attempts(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects/{project_id}/tasks/{task_id}/attempts",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("task_id" = String, Path, description = "Task ID")
+    ),
+    request_body = CreateTaskAttempt,
+    responses(
+        (status = 200, description = "Task attempt created successfully", body = ApiResponse<TaskAttempt>),
+        (status = 404, description = "Project or task not found"),
+        (status = 400, description = "Invalid input"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_attempts"
+)]
 pub async fn create_task_attempt(
     Extension(_project): Extension<Project>,
     Extension(task): Extension<Task>,

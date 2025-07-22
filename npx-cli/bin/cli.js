@@ -63,6 +63,7 @@ function getBinaryName(base) {
 const platformDir = getPlatformDir();
 const extractDir = path.join(__dirname, "..", "dist", platformDir);
 const isMcpMode = process.argv.includes("--mcp");
+const isMcpSseMode = process.argv.includes("--mcp-sse");
 
 // ensure output dir
 fs.mkdirSync(extractDir, { recursive: true });
@@ -97,9 +98,12 @@ function extractAndRun(baseName, launch) {
   return launch(binPath);
 }
 
-if (isMcpMode) {
+if (isMcpMode || isMcpSseMode) {
   extractAndRun("vibe-kanban-mcp", (bin) => {
-    const proc = spawn(bin, [], { stdio: ["pipe", "pipe", "pipe"] });
+    const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : [];
+    console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
+    
+    const proc = spawn(bin, mcpArgs, { stdio: ["pipe", "pipe", "pipe"] });
     process.stdin.pipe(proc.stdin);
     proc.stdout.pipe(process.stdout);
     proc.stderr.pipe(process.stdout);
@@ -116,13 +120,96 @@ if (isMcpMode) {
     process.on("SIGTERM", () => proc.kill("SIGTERM"));
   });
 } else {
-  console.log(`📦 Extracting vibe-kanban...`);
-  extractAndRun("vibe-kanban", (bin) => {
-    console.log(`🚀 Launching vibe-kanban...`);
-    if (platform === "win32") {
-      execSync(`"${bin}"`, { stdio: "inherit" });
-    } else {
-      execSync(`"${bin}"`, { stdio: "inherit" });
+  // Start both main backend server and MCP SSE server concurrently
+  console.log(`📦 Extracting vibe-kanban and vibe-kanban-mcp...`);
+  
+  // Set environment variables for proper port configuration
+  process.env.MCP_SSE_PORT = "23002";
+  process.env.PORT = "23001";
+  process.env.HOST = "0.0.0.0";
+  
+  let mainServerProc, mcpServerProc;
+  let shutdownInProgress = false;
+  
+  // Function to gracefully shutdown both servers
+  const shutdown = (signal) => {
+    if (shutdownInProgress) return;
+    shutdownInProgress = true;
+    
+    console.log(`\n🛑 Shutting down servers (${signal})...`);
+    
+    if (mainServerProc && !mainServerProc.killed) {
+      mainServerProc.kill(signal);
     }
+    if (mcpServerProc && !mcpServerProc.killed) {
+      mcpServerProc.kill(signal);
+    }
+    
+    // Force exit after timeout
+    setTimeout(() => {
+      console.log("⏰ Force exit after timeout");
+      process.exit(1);
+    }, 5000);
+  };
+  
+  // Extract and start main backend server
+  extractAndRun("vibe-kanban", (mainBin) => {
+    console.log(`🚀 Starting main backend server on http://0.0.0.0:23001...`);
+    mainServerProc = spawn(mainBin, [], { 
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env }
+    });
+    
+    mainServerProc.stdout.on("data", (data) => {
+      process.stdout.write(`[MAIN] ${data}`);
+    });
+    mainServerProc.stderr.on("data", (data) => {
+      process.stderr.write(`[MAIN] ${data}`);
+    });
+    
+    mainServerProc.on("exit", (code) => {
+      if (!shutdownInProgress) {
+        console.error(`❌ Main server exited with code ${code}`);
+        shutdown("SIGTERM");
+      }
+    });
+    
+    mainServerProc.on("error", (e) => {
+      console.error("❌ Main server error:", e.message);
+      shutdown("SIGTERM");
+    });
+    
+    // Extract and start MCP SSE server
+    extractAndRun("vibe-kanban-mcp", (mcpBin) => {
+      console.log(`🚀 Starting MCP SSE server on http://0.0.0.0:23002/sse...`);
+      mcpServerProc = spawn(mcpBin, ["--mcp-sse"], { 
+        stdio: ["pipe", "pipe", "pipe"],
+        env: { ...process.env }
+      });
+      
+      mcpServerProc.stdout.on("data", (data) => {
+        process.stdout.write(`[MCP] ${data}`);
+      });
+      mcpServerProc.stderr.on("data", (data) => {
+        process.stderr.write(`[MCP] ${data}`);
+      });
+      
+      mcpServerProc.on("exit", (code) => {
+        if (!shutdownInProgress) {
+          console.error(`❌ MCP server exited with code ${code}`);
+          shutdown("SIGTERM");
+        }
+      });
+      
+      mcpServerProc.on("error", (e) => {
+        console.error("❌ MCP server error:", e.message);
+        shutdown("SIGTERM");
+      });
+    });
   });
+  
+  // Handle shutdown signals
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("exit", () => shutdown("SIGTERM"));
 }

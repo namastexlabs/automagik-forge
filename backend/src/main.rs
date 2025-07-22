@@ -38,6 +38,11 @@ use routes::{
     auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+mod openapi;
+use openapi::ApiDoc;
 
 async fn echo_handler(
     Json(payload): Json<serde_json::Value>,
@@ -123,6 +128,9 @@ async fn serve_sound_file(
 }
 
 fn main() -> anyhow::Result<()> {
+    // Load .env file if it exists
+    dotenvy::dotenv().ok();
+    
     let environment = if cfg!(debug_assertions) {
         "dev"
     } else {
@@ -261,6 +269,7 @@ fn main() -> anyhow::Result<()> {
             let app = Router::new()
                 .merge(public_routes)
                 .merge(app_routes)
+                .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
                 // Static file serving routes
                 .route("/", get(index_handler))
                 .route("/*path", get(static_handler))
@@ -272,6 +281,7 @@ fn main() -> anyhow::Result<()> {
                 .or_else(|_| std::env::var("PORT"))
                 .ok()
                 .and_then(|s| {
+                    tracing::info!("Found PORT environment variable: {}", s);
                     // remove any ANSI codes, then turn into String
                     let cleaned = String::from_utf8(strip(s.as_bytes()))
                         .expect("UTF-8 after stripping ANSI");

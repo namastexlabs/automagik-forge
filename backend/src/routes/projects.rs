@@ -7,6 +7,7 @@ use axum::{
     routing::get,
     Extension, Json, Router,
 };
+use utoipa;
 use uuid::Uuid;
 
 use crate::{
@@ -20,6 +21,15 @@ use crate::{
     },
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/projects",
+    responses(
+        (status = 200, description = "List all projects", body = ApiResponse<Vec<Project>>),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "projects"
+)]
 pub async fn get_projects(
     State(app_state): State<AppState>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, StatusCode> {
@@ -32,6 +42,19 @@ pub async fn get_projects(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID")
+    ),
+    responses(
+        (status = 200, description = "Get project by ID", body = ApiResponse<Project>),
+        (status = 404, description = "Project not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "projects"
+)]
 pub async fn get_project(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
@@ -93,6 +116,17 @@ pub async fn create_project_branch(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects",
+    request_body = CreateProject,
+    responses(
+        (status = 200, description = "Project created successfully", body = ApiResponse<Project>),
+        (status = 400, description = "Invalid input"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "projects"
+)]
 pub async fn create_project(
     State(app_state): State<AppState>,
     Json(payload): Json<CreateProject>,
@@ -205,6 +239,21 @@ pub async fn create_project(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID")
+    ),
+    request_body = UpdateProject,
+    responses(
+        (status = 200, description = "Project updated successfully", body = ApiResponse<Project>),
+        (status = 404, description = "Project not found"),
+        (status = 400, description = "Invalid input"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "projects"
+)]
 pub async fn update_project(
     Extension(existing_project): Extension<Project>,
     State(app_state): State<AppState>,
@@ -269,6 +318,19 @@ pub async fn update_project(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/projects/{id}",
+    params(
+        ("id" = String, Path, description = "Project ID")
+    ),
+    responses(
+        (status = 200, description = "Project deleted successfully"),
+        (status = 404, description = "Project not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "projects"
+)]
 pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,

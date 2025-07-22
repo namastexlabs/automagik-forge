@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::executors::{
@@ -16,7 +17,7 @@ const STDOUT_UPDATE_THRESHOLD: usize = 1;
 const BUFFER_SIZE_THRESHOLD: usize = 256;
 
 /// Normalized conversation representation for different executor formats
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct NormalizedConversation {
     pub entries: Vec<NormalizedEntry>,
@@ -27,7 +28,7 @@ pub struct NormalizedConversation {
 }
 
 /// Individual entry in a normalized conversation
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct NormalizedEntry {
     pub timestamp: Option<String>,
@@ -38,7 +39,7 @@ pub struct NormalizedEntry {
 }
 
 /// Types of entries in a normalized conversation
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(export)]
 pub enum NormalizedEntryType {
@@ -54,7 +55,7 @@ pub enum NormalizedEntryType {
 }
 
 /// Types of tool actions that can be performed
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(tag = "action", rename_all = "snake_case")]
 #[ts(export)]
 pub enum ActionType {
@@ -391,7 +392,7 @@ pub struct FollowUpInfo {
 }
 
 /// Configuration for different executor types
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(export)]
 pub enum ExecutorConfig {

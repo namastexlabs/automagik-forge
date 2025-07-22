@@ -1,8 +1,9 @@
 mod response {
     use serde::Serialize;
     use ts_rs::TS;
+    use utoipa::ToSchema;
 
-    #[derive(Debug, Serialize, TS)]
+    #[derive(Debug, Serialize, TS, ToSchema)]
     #[ts(export)]
     pub struct ApiResponse<T> {
         success: bool,

@@ -2,10 +2,11 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::executor::ExecutorConfig;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct Config {
     pub theme: ThemeMode,
@@ -22,7 +23,7 @@ pub struct Config {
     pub analytics_enabled: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
@@ -36,14 +37,14 @@ pub enum ThemeMode {
     Red,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct EditorConfig {
     pub editor_type: EditorType,
     pub custom_command: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct GitHubConfig {
     pub pat: Option<String>,
@@ -53,7 +54,7 @@ pub struct GitHubConfig {
     pub default_pr_base: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 #[serde(rename_all = "lowercase")]
 pub enum EditorType {
@@ -65,7 +66,7 @@ pub enum EditorType {
     Custom,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 #[serde(rename_all = "kebab-case")]
 pub enum SoundFile {
@@ -79,14 +80,14 @@ pub enum SoundFile {
 }
 
 // Constants for frontend
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct EditorConstants {
     pub editor_types: Vec<EditorType>,
     pub editor_labels: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct SoundConstants {
     pub sound_files: Vec<SoundFile>,

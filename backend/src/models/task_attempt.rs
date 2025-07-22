@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
 use tracing::info;
 use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use super::{project::Project, task::Task};
@@ -71,7 +72,7 @@ impl From<GitHubServiceError> for TaskAttemptError {
     }
 }
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
+#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, ToSchema)]
 #[sqlx(type_name = "task_attempt_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[ts(export)]
@@ -84,7 +85,7 @@ pub enum TaskAttemptStatus {
     ExecutorFailed,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct TaskAttempt {
     pub id: Uuid,
@@ -104,14 +105,14 @@ pub struct TaskAttempt {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateTaskAttempt {
     pub executor: Option<String>, // Optional executor name (defaults to "echo")
     pub base_branch: Option<String>, // Optional base branch to checkout (defaults to current HEAD)
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct UpdateTaskAttempt {
     // Currently no updateable fields, but keeping struct for API compatibility
@@ -128,13 +129,13 @@ pub struct CreatePrParams<'a> {
     pub base_branch: Option<&'a str>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub enum DiffChunkType {
     Equal,
@@ -142,7 +143,7 @@ pub enum DiffChunkType {
     Delete,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct DiffChunk {
     pub chunk_type: DiffChunkType,

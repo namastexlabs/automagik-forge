@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "check": "npm run frontend:check && npm run backend:check",
-    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
+    "dev": "node scripts/load-env.js && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\" \"npm run mcp:sse\"",
     "test:npm": "./test-npm-package.sh",
-    "frontend:dev": "cd frontend && npm run dev -- --port ${FRONTEND_PORT:-3000} --open",
+    "frontend:dev": "cd frontend && npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT:-3000} --open",
     "frontend:check": "cd frontend && npm run check",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) npm run backend:dev:watch",
     "backend:check": "cargo check",
-    "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 cargo -- watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
+    "backend:dev:watch": "DISABLE_WORKTREE_ORPHAN_CLEANUP=1 BACKEND_PORT=${BACKEND_PORT} cargo -- watch -w backend -x 'run --manifest-path backend/Cargo.toml'",
+    "mcp:sse": "node scripts/start-mcp-sse.js",
     "generate-types": "cd backend && cargo run --bin generate_types",
     "generate-types:check": "cd backend && cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js"
@@ -22,5 +23,6 @@
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"
-  }
+  },
+  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
 }

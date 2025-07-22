@@ -2,6 +2,7 @@ use axum::{
     extract::State, http::StatusCode, response::Json as ResponseJson, routing::get, Extension,
     Json, Router,
 };
+use utoipa;
 use uuid::Uuid;
 
 use crate::{
@@ -15,6 +16,19 @@ use crate::{
     },
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{project_id}/tasks",
+    params(
+        ("project_id" = String, Path, description = "Project ID")
+    ),
+    responses(
+        (status = 200, description = "List all tasks for a project", body = ApiResponse<Vec<TaskWithAttemptStatus>>),
+        (status = 404, description = "Project not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "tasks"
+)]
 pub async fn get_project_tasks(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
@@ -28,12 +42,41 @@ pub async fn get_project_tasks(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{project_id}/tasks/{task_id}",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("task_id" = String, Path, description = "Task ID")
+    ),
+    responses(
+        (status = 200, description = "Get task by ID", body = ApiResponse<Task>),
+        (status = 404, description = "Task not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "tasks"
+)]
 pub async fn get_task(
     Extension(task): Extension<Task>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/projects/{project_id}/tasks",
+    params(
+        ("project_id" = String, Path, description = "Project ID")
+    ),
+    request_body = CreateTask,
+    responses(
+        (status = 200, description = "Task created successfully", body = ApiResponse<Task>),
+        (status = 400, description = "Invalid input"),
+        (status = 404, description = "Project not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "tasks"
+)]
 pub async fn create_task(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
@@ -165,6 +208,22 @@ pub async fn create_task_and_start(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/projects/{project_id}/tasks/{task_id}",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("task_id" = String, Path, description = "Task ID")
+    ),
+    request_body = UpdateTask,
+    responses(
+        (status = 200, description = "Task updated successfully", body = ApiResponse<Task>),
+        (status = 404, description = "Task or project not found"),
+        (status = 400, description = "Invalid input"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "tasks"
+)]
 pub async fn update_task(
     Extension(project): Extension<Project>,
     Extension(existing_task): Extension<Task>,
@@ -198,6 +257,20 @@ pub async fn update_task(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/projects/{project_id}/tasks/{task_id}",
+    params(
+        ("project_id" = String, Path, description = "Project ID"),
+        ("task_id" = String, Path, description = "Task ID")
+    ),
+    responses(
+        (status = 200, description = "Task deleted successfully"),
+        (status = 404, description = "Task or project not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "tasks"
+)]
 pub async fn delete_task(
     Extension(project): Extension<Project>,
     Extension(task): Extension<Task>,

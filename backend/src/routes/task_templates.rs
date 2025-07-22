@@ -4,6 +4,7 @@ use axum::{
     response::IntoResponse,
     Extension, Json,
 };
+use utoipa;
 use uuid::Uuid;
 
 use crate::{
@@ -14,6 +15,15 @@ use crate::{
     },
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/task-templates",
+    responses(
+        (status = 200, description = "List all task templates", body = ApiResponse<Vec<TaskTemplate>>),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn list_templates(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
@@ -29,6 +39,18 @@ pub async fn list_templates(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/projects/{project_id}/task-templates",
+    params(
+        ("project_id" = String, Path, description = "Project ID")
+    ),
+    responses(
+        (status = 200, description = "List project-specific task templates", body = ApiResponse<Vec<TaskTemplate>>),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn list_project_templates(
     State(state): State<AppState>,
     Path(project_id): Path<Uuid>,
@@ -45,6 +67,15 @@ pub async fn list_project_templates(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-templates/global",
+    responses(
+        (status = 200, description = "List global task templates", body = ApiResponse<Vec<TaskTemplate>>),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn list_global_templates(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
@@ -60,12 +91,35 @@ pub async fn list_global_templates(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/task-templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID")
+    ),
+    responses(
+        (status = 200, description = "Get task template by ID", body = ApiResponse<TaskTemplate>),
+        (status = 404, description = "Template not found")
+    ),
+    tag = "task_templates"
+)]
 pub async fn get_template(
     Extension(template): Extension<TaskTemplate>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ApiResponse<()>>)> {
     Ok(Json(ApiResponse::success(template)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/task-templates",
+    request_body = CreateTaskTemplate,
+    responses(
+        (status = 201, description = "Task template created successfully", body = ApiResponse<TaskTemplate>),
+        (status = 409, description = "Template name already exists"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn create_template(
     State(state): State<AppState>,
     Json(payload): Json<CreateTaskTemplate>,
@@ -93,6 +147,21 @@ pub async fn create_template(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/task-templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID")
+    ),
+    request_body = UpdateTaskTemplate,
+    responses(
+        (status = 200, description = "Task template updated successfully", body = ApiResponse<TaskTemplate>),
+        (status = 404, description = "Template not found"),
+        (status = 409, description = "Template name already exists"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn update_template(
     Extension(template): Extension<TaskTemplate>,
     State(state): State<AppState>,
@@ -126,6 +195,19 @@ pub async fn update_template(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/task-templates/{template_id}",
+    params(
+        ("template_id" = String, Path, description = "Template ID")
+    ),
+    responses(
+        (status = 200, description = "Task template deleted successfully"),
+        (status = 404, description = "Template not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "task_templates"
+)]
 pub async fn delete_template(
     Extension(template): Extension<TaskTemplate>,
     State(state): State<AppState>,

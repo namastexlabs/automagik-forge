@@ -5,7 +5,7 @@ use rmcp::{
     model::{
         CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
     },
-    schemars, tool, tool_handler, tool_router, Error as RmcpError, ServerHandler,
+    schemars, tool, tool_handler, tool_router, ErrorData as RmcpError, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;

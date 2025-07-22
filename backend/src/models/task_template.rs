@@ -2,9 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct TaskTemplate {
     pub id: Uuid,
@@ -16,7 +17,7 @@ pub struct TaskTemplate {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateTaskTemplate {
     pub project_id: Option<Uuid>,
@@ -25,7 +26,7 @@ pub struct CreateTaskTemplate {
     pub template_name: String,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct UpdateTaskTemplate {
     pub title: Option<String>,

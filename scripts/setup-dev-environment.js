@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const net = require("net");
+const { loadEnv } = require("./load-env");
 
 const PORTS_FILE = path.join(__dirname, "..", ".dev-ports.json");
 const DEV_ASSETS_SEED = path.join(__dirname, "..", "dev_assets_seed");
@@ -67,23 +68,70 @@ function savePorts(ports) {
  * Verify that saved ports are still available
  */
 async function verifyPorts(ports) {
+  // Check if ports object has all required properties
+  if (!ports.mcpSse) {
+    if (process.argv[2] === "get") {
+      console.log("Port structure outdated, missing mcpSse property, reallocating...");
+    }
+    return false;
+  }
+
   const frontendAvailable = await isPortAvailable(ports.frontend);
   const backendAvailable = await isPortAvailable(ports.backend);
+  const mcpSseAvailable = await isPortAvailable(ports.mcpSse);
 
-  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable)) {
+  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable || !mcpSseAvailable)) {
     console.log(
-      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}`
+      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}, mcpSse:${ports.mcpSse}=${mcpSseAvailable}`
     );
   }
 
-  return frontendAvailable && backendAvailable;
+  return frontendAvailable && backendAvailable && mcpSseAvailable;
 }
 
 /**
  * Allocate ports for development
  */
 async function allocatePorts() {
-  // Try to load existing ports first
+  // Load .env variables first
+  loadEnv();
+  
+  // Check for environment variables first (from .env)
+  const envFrontendPort = process.env.FRONTEND_PORT ? parseInt(process.env.FRONTEND_PORT) : null;
+  const envBackendPort = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : null;
+  const envMcpSsePort = process.env.MCP_SSE_PORT ? parseInt(process.env.MCP_SSE_PORT) : null;
+  
+  // If env ports are specified and available, use them
+  if (envFrontendPort && envBackendPort && envMcpSsePort) {
+    const frontendAvailable = await isPortAvailable(envFrontendPort);
+    const backendAvailable = await isPortAvailable(envBackendPort);
+    const mcpSseAvailable = await isPortAvailable(envMcpSsePort);
+    
+    if (frontendAvailable && backendAvailable && mcpSseAvailable) {
+      const envPorts = {
+        frontend: envFrontendPort,
+        backend: envBackendPort,
+        mcpSse: envMcpSsePort,
+        timestamp: new Date().toISOString(),
+      };
+      
+      if (process.argv[2] === "get") {
+        console.log("Using ports from .env file:");
+        console.log(`Frontend: ${envPorts.frontend}`);
+        console.log(`Backend: ${envPorts.backend}`);
+        console.log(`MCP SSE: ${envPorts.mcpSse}`);
+      }
+      
+      savePorts(envPorts);
+      return envPorts;
+    } else {
+      if (process.argv[2] === "get") {
+        console.log("Some .env ports are not available, falling back to dynamic allocation...");
+      }
+    }
+  }
+
+  // Try to load existing ports if no .env ports or they're not available
   const existingPorts = loadPorts();
 
   if (existingPorts) {
@@ -93,6 +141,7 @@ async function allocatePorts() {
         console.log("Reusing existing dev ports:");
         console.log(`Frontend: ${existingPorts.frontend}`);
         console.log(`Backend: ${existingPorts.backend}`);
+        console.log(`MCP SSE: ${existingPorts.mcpSse || 'Not allocated'}`);
       }
       return existingPorts;
     } else {
@@ -104,13 +153,15 @@ async function allocatePorts() {
     }
   }
 
-  // Find new free ports
+  // Find new free ports as last resort
   const frontendPort = await findFreePort(3000);
   const backendPort = await findFreePort(frontendPort + 1);
+  const mcpSsePort = await findFreePort(8765);
 
   const ports = {
     frontend: frontendPort,
     backend: backendPort,
+    mcpSse: mcpSsePort,
     timestamp: new Date().toISOString(),
   };
 
@@ -120,6 +171,7 @@ async function allocatePorts() {
     console.log("Allocated new dev ports:");
     console.log(`Frontend: ${ports.frontend}`);
     console.log(`Backend: ${ports.backend}`);
+    console.log(`MCP SSE: ${ports.mcpSse}`);
   }
 
   return ports;

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::fs;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::{
     app_state::AppState,
@@ -30,12 +31,34 @@ pub fn config_router() -> Router<AppState> {
         .route("/mcp-servers", post(update_mcp_servers))
 }
 
-async fn get_config(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<Config>> {
+#[utoipa::path(
+    get,
+    path = "/config",
+    tag = "config",
+    summary = "Get application configuration",
+    description = "Retrieves the current application configuration settings",
+    responses(
+        (status = 200, description = "Configuration retrieved successfully", body = ApiResponse<Config>)
+    )
+)]
+pub async fn get_config(State(app_state): State<AppState>) -> ResponseJson<ApiResponse<Config>> {
     let config = app_state.get_config().read().await;
     ResponseJson(ApiResponse::success(config.clone()))
 }
 
-async fn update_config(
+#[utoipa::path(
+    post,
+    path = "/config",
+    tag = "config",
+    summary = "Update application configuration",
+    description = "Updates the application configuration with new settings",
+    request_body = Config,
+    responses(
+        (status = 200, description = "Configuration updated successfully", body = ApiResponse<Config>),
+        (status = 500, description = "Failed to save configuration", body = ApiResponse<String>)
+    )
+)]
+pub async fn update_config(
     State(app_state): State<AppState>,
     Json(new_config): Json<Config>,
 ) -> ResponseJson<ApiResponse<Config>> {
@@ -57,14 +80,24 @@ async fn update_config(
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct ConfigConstants {
     pub editor: EditorConstants,
     pub sound: SoundConstants,
 }
 
-async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
+#[utoipa::path(
+    get,
+    path = "/config/constants",
+    tag = "config",
+    summary = "Get configuration constants",
+    description = "Retrieves editor and sound constants for the application",
+    responses(
+        (status = 200, description = "Constants retrieved successfully", body = ApiResponse<ConfigConstants>)
+    )
+)]
+pub async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
     let constants = ConfigConstants {
         editor: EditorConstants::new(),
         sound: SoundConstants::new(),
@@ -73,8 +106,8 @@ async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>> {
     ResponseJson(ApiResponse::success(constants))
 }
 
-#[derive(Debug, Deserialize)]
-struct McpServerQuery {
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct McpServerQuery {
     executor: Option<String>,
 }
 
@@ -100,7 +133,21 @@ fn resolve_executor_config(
     Ok(executor_config)
 }
 
-async fn get_mcp_servers(
+#[utoipa::path(
+    get,
+    path = "/mcp-servers",
+    tag = "config",
+    summary = "Get MCP servers configuration",
+    description = "Retrieves MCP (Model Context Protocol) servers configuration for the specified executor",
+    params(
+        ("executor" = Option<String>, Query, description = "Executor type to get MCP servers for")
+    ),
+    responses(
+        (status = 200, description = "MCP servers retrieved successfully", body = ApiResponse<Value>),
+        (status = 400, description = "Executor does not support MCP or invalid configuration", body = ApiResponse<String>)
+    )
+)]
+pub async fn get_mcp_servers(
     State(app_state): State<AppState>,
     Query(query): Query<McpServerQuery>,
 ) -> ResponseJson<ApiResponse<Value>> {
@@ -139,7 +186,22 @@ async fn get_mcp_servers(
     }
 }
 
-async fn update_mcp_servers(
+#[utoipa::path(
+    post,
+    path = "/mcp-servers",
+    tag = "config",
+    summary = "Update MCP servers configuration",
+    description = "Updates MCP (Model Context Protocol) servers configuration for the specified executor",
+    params(
+        ("executor" = Option<String>, Query, description = "Executor type to update MCP servers for")
+    ),
+    request_body = HashMap<String, Value>,
+    responses(
+        (status = 200, description = "MCP servers updated successfully", body = ApiResponse<String>),
+        (status = 400, description = "Executor does not support MCP or update failed", body = ApiResponse<String>)
+    )
+)]
+pub async fn update_mcp_servers(
     State(app_state): State<AppState>,
     Query(query): Query<McpServerQuery>,
     Json(new_servers): Json<HashMap<String, Value>>,

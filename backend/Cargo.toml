@@ -14,6 +14,7 @@ uninlined-format-args = "allow"
 
 [dependencies]
 tokio = { workspace = true }
+tokio-util = { version = "0.7" }
 axum = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }
@@ -39,7 +40,7 @@ ignore = "0.4"
 command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }
 openssl-sys = { workspace = true }
-rmcp = { version = "0.2.1", features = ["server", "transport-io"] }
+rmcp = { version = "0.3.0", features = ["server", "transport-io", "transport-sse-server"] }
 schemars = "0.8"
 regex = "1.11.1"
 notify-rust = "4.11"
@@ -55,6 +56,10 @@ lazy_static = "1.4"
 futures-util = "0.3"
 async-stream = "0.3"
 json-patch = "2.0"
+dotenvy = "0.15"
+utoipa = { version = "5.1.0", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-axum = { version = "0.1.0" }
+utoipa-swagger-ui = { version = "8.0.0", features = ["axum"] }
 
 [dev-dependencies]
 tempfile = "3.8"

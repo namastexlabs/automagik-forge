@@ -3,9 +3,10 @@ use git2::{BranchType, Repository};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct Project {
     pub id: Uuid,
@@ -16,12 +17,14 @@ pub struct Project {
     pub cleanup_script: Option<String>,
 
     #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateProject {
     pub name: String,
@@ -32,7 +35,7 @@ pub struct CreateProject {
     pub cleanup_script: Option<String>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct UpdateProject {
     pub name: Option<String>,
@@ -42,7 +45,7 @@ pub struct UpdateProject {
     pub cleanup_script: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct ProjectWithBranch {
     pub id: Uuid,
@@ -54,12 +57,14 @@ pub struct ProjectWithBranch {
     pub current_branch: Option<String>,
 
     #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct SearchResult {
     pub path: String,
@@ -67,7 +72,7 @@ pub struct SearchResult {
     pub match_type: SearchMatchType,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub enum SearchMatchType {
     FileName,
@@ -75,7 +80,7 @@ pub enum SearchMatchType {
     FullPath,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct GitBranch {
     pub name: String,
@@ -85,7 +90,7 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
 pub struct CreateBranch {
     pub name: String,

@@ -8,10 +8,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::{app_state::AppState, models::ApiResponse};
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct DirectoryEntry {
     pub name: String,
@@ -20,18 +21,32 @@ pub struct DirectoryEntry {
     pub is_git_repo: bool,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, ToSchema)]
 #[ts(export)]
 pub struct DirectoryListResponse {
     pub entries: Vec<DirectoryEntry>,
     pub current_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ListDirectoryQuery {
     path: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/filesystem/list",
+    tag = "filesystem",
+    summary = "List directory contents",
+    description = "Lists files and directories at the specified path, with Git repository detection",
+    params(
+        ("path" = Option<String>, Query, description = "Directory path to list (defaults to home directory)")
+    ),
+    responses(
+        (status = 200, description = "Directory contents retrieved successfully", body = ApiResponse<DirectoryListResponse>),
+        (status = 404, description = "Directory not found or access denied")
+    )
+)]
 pub async fn list_directory(
     Query(query): Query<ListDirectoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<DirectoryListResponse>>, StatusCode> {
@@ -115,6 +130,20 @@ pub async fn list_directory(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/filesystem/validate-git",
+    tag = "filesystem",
+    summary = "Validate Git repository path",
+    description = "Checks if the specified path exists and is a valid Git repository",
+    params(
+        ("path" = String, Query, description = "Directory path to validate as Git repository")
+    ),
+    responses(
+        (status = 200, description = "Path validation result", body = ApiResponse<bool>),
+        (status = 400, description = "Missing or invalid path parameter")
+    )
+)]
 pub async fn validate_git_path(
     Query(query): Query<ListDirectoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<bool>>, StatusCode> {
@@ -127,6 +156,20 @@ pub async fn validate_git_path(
     Ok(ResponseJson(ApiResponse::success(is_valid_git_repo)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/filesystem/create-git",
+    tag = "filesystem",
+    summary = "Initialize Git repository",
+    description = "Creates a directory if needed and initializes it as a Git repository",
+    params(
+        ("path" = String, Query, description = "Directory path where Git repository should be created")
+    ),
+    responses(
+        (status = 200, description = "Git repository created or already exists"),
+        (status = 400, description = "Missing path parameter or Git initialization failed")
+    )
+)]
 pub async fn create_git_repo(
     Query(query): Query<ListDirectoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
