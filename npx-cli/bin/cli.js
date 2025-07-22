@@ -4,6 +4,29 @@ const { execSync, spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
+// Load .env file from current working directory
+function loadEnvFile() {
+  const envPath = path.join(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=');
+          if (!process.env[key]) {
+            process.env[key] = value;
+          }
+        }
+      }
+    });
+  }
+}
+
+// Load environment variables from .env file
+loadEnvFile();
+
 // Detect true CPU arch on macOS (handles Rosetta)
 function getUnderlyingArch() {
   const platform = process.platform;
@@ -103,8 +126,7 @@ if (isMcpMode || isMcpSseMode) {
     const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : [];
     console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
     
-    // Set default log level to info, but allow user override via RUST_LOG environment variable
-    process.env.RUST_LOG = process.env.RUST_LOG || "info";
+    // Environment variables are already loaded from .env file
     
     const proc = spawn(bin, mcpArgs, { 
       stdio: ["pipe", "pipe", "pipe"],
@@ -129,12 +151,11 @@ if (isMcpMode || isMcpSseMode) {
   // Start both main backend server and MCP SSE server concurrently
   console.log(`📦 Extracting automagik-forge and automagik-forge-mcp...`);
   
-  // Set environment variables for proper port configuration and logging
-  process.env.MCP_SSE_PORT = "23002";
-  process.env.PORT = "23001";
-  process.env.HOST = "0.0.0.0";
-  // Set default log level to info, but allow user override via RUST_LOG environment variable
-  process.env.RUST_LOG = process.env.RUST_LOG || "info";
+  // Environment variables are loaded from .env file
+  // Use defaults if not specified in .env
+  const mcpSsePort = process.env.MCP_SSE_PORT || "23002";
+  const backendPort = process.env.BACKEND_PORT || process.env.PORT || "23001";
+  const host = process.env.HOST || "0.0.0.0";
   
   let mainServerProc, mcpServerProc;
   let shutdownInProgress = false;
@@ -162,7 +183,7 @@ if (isMcpMode || isMcpSseMode) {
   
   // Extract and start main backend server
   extractAndRun("automagik-forge", (mainBin) => {
-    console.log(`🚀 Starting main backend server on http://0.0.0.0:23001...`);
+    console.log(`🚀 Starting main backend server on http://${host}:${backendPort}...`);
     mainServerProc = spawn(mainBin, [], { 
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env }
@@ -189,7 +210,7 @@ if (isMcpMode || isMcpSseMode) {
     
     // Extract and start MCP SSE server
     extractAndRun("automagik-forge-mcp", (mcpBin) => {
-      console.log(`🚀 Starting MCP SSE server on http://0.0.0.0:23002/sse...`);
+      console.log(`🚀 Starting MCP SSE server on http://${host}:${mcpSsePort}/sse...`);
       mcpServerProc = spawn(mcpBin, ["--mcp-sse"], { 
         stdio: ["pipe", "pipe", "pipe"],
         env: { ...process.env }
