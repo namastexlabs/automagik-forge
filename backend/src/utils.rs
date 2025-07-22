@@ -37,13 +37,18 @@ pub fn is_wsl2() -> bool {
 pub fn asset_dir() -> std::path::PathBuf {
     if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets")
+    } else if cfg!(target_os = "windows") {
+        dirs::data_dir()
+            .expect("Could not find data directory")
+            .join("automagik-forge")
     } else {
         dirs::home_dir()
             .expect("Could not find home directory")
             .join(".automagik-forge")
     }
 
-    // ✔ All platforms → ~/.automagik-forge
+    // ✔ Linux/macOS → ~/.automagik-forge
+    // ✔ Windows → %APPDATA%\automagik-forge
 }
 
 pub fn config_path() -> std::path::PathBuf {
@@ -53,6 +58,10 @@ pub fn config_path() -> std::path::PathBuf {
 pub fn cache_dir() -> std::path::PathBuf {
     if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../dev_assets/.cache")
+    } else if cfg!(target_os = "windows") {
+        dirs::cache_dir()
+            .expect("Could not find cache directory")
+            .join("automagik-forge")
     } else {
         dirs::home_dir()
             .expect("Could not find home directory")
@@ -60,7 +69,8 @@ pub fn cache_dir() -> std::path::PathBuf {
             .join("cache")
     }
 
-    // ✔ All platforms → ~/.automagik-forge/cache
+    // ✔ Linux/macOS → ~/.automagik-forge/cache
+    // ✔ Windows → %LOCALAPPDATA%\automagik-forge
 }
 
 /// Get or create cached PowerShell script file
