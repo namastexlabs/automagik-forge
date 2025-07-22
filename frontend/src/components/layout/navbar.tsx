@@ -60,12 +60,12 @@ export function Navbar() {
           <div className="flex items-center space-x-1">
             <Button asChild variant="ghost" size="sm">
               <a
-                href="https://automagikforge.com/"
+                href="/docs"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <BookOpen className="mr-2 h-4 w-4" />
-                Docs
+                API Docs
               </a>
             </Button>
             <Button asChild variant="ghost" size="sm">

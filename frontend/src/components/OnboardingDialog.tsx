@@ -98,8 +98,19 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
                   {executor.type === 'claude' && 'Claude Code from Anthropic'}
                   {executor.type === 'amp' && 'From Sourcegraph'}
                   {executor.type === 'gemini' && 'Google Gemini from Bloop'}
-                  {executor.type === 'charm-opencode' &&
-                    'Charm/Opencode AI assistant'}
+                  {executor.type === 'opencode-ai' && (
+                    <span>
+                      OpenCode AI terminal assistant{' '}
+                      <a 
+                        href="https://github.com/opencode-ai/opencode" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="underline hover:text-blue-600"
+                      >
+                        (GitHub)
+                      </a>
+                    </span>
+                  )}
                   {executor.type === 'claude-code-router' &&
                     'Claude Code Router'}
                   {executor.type === 'echo' &&
