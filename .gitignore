@@ -21,6 +21,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# NPM authentication
+.npmrc
+
 # IDE
 .vscode/
 .idea/

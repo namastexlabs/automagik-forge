@@ -7,6 +7,9 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 use automagik_forge::{mcp::task_server::TaskServer, sentry_layer, utils::asset_dir};
 
 fn main() -> anyhow::Result<()> {
+    // Load .env file if it exists
+    dotenvy::dotenv().ok();
+    
     // Parse command line arguments
     let args: Vec<String> = std::env::args().collect();
     let enable_sse = args.contains(&"--mcp-sse".to_string());
@@ -40,7 +43,11 @@ fn main() -> anyhow::Result<()> {
                 .with(
                     tracing_subscriber::fmt::layer()
                         .with_writer(std::io::stderr)
-                        .with_filter(EnvFilter::new("debug")),
+                        .with_filter(
+                            std::env::var("RUST_LOG")
+                                .map(|level| EnvFilter::new(level))
+                                .unwrap_or_else(|_| EnvFilter::new("info"))
+                        ),
                 )
                 .with(sentry_layer())
                 .init();
