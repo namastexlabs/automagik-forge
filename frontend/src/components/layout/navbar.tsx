@@ -60,7 +60,7 @@ export function Navbar() {
           <div className="flex items-center space-x-1">
             <Button asChild variant="ghost" size="sm">
               <a
-                href="https://vibekanban.com/"
+                href="https://automagikforge.com/"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -70,7 +70,7 @@ export function Navbar() {
             </Button>
             <Button asChild variant="ghost" size="sm">
               <a
-                href="https://github.com/BloopAI/vibe-kanban/issues"
+                href="https://github.com/BloopAI/automagik-forge/issues"
                 target="_blank"
                 rel="noopener noreferrer"
               >

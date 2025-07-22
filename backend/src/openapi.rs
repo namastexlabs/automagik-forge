@@ -3,12 +3,12 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "Vibe Kanban API",
+        title = "Automagik Forge API",
         version = "1.0.0",
-        description = "A task and project management API for Vibe Kanban",
+        description = "A task and project management API for Automagik Forge",
         contact(
-            name = "Vibe Kanban Team",
-            url = "https://github.com/your-org/vibe-kanban"
+            name = "Automagik Forge Team",
+            url = "https://github.com/your-org/automagik-forge"
         )
     ),
     paths(

@@ -14,7 +14,7 @@ use strip_ansi_escapes::strip;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
-use vibe_kanban::{sentry_layer, Assets, ScriptAssets, SoundAssets};
+use automagik_forge::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod execution_monitor;

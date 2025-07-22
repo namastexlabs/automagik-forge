@@ -57,7 +57,7 @@ function CreatePrDialog({
 
   useEffect(() => {
     if (showCreatePRDialog) {
-      setPrTitle(`${task.title} (vibe-kanban)`);
+      setPrTitle(`${task.title} (automagik-forge)`);
       setPrBody(task.description || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

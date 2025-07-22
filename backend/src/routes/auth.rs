@@ -156,7 +156,7 @@ pub async fn device_poll(
         let user_res = client
             .get("https://api.github.com/user")
             .bearer_auth(access_token)
-            .header("User-Agent", "vibe-kanban-app")
+            .header("User-Agent", "automagik-forge-app")
             .send()
             .await;
         let user_json: serde_json::Value = match user_res {
@@ -182,7 +182,7 @@ pub async fn device_poll(
         let emails_res = client
             .get("https://api.github.com/user/emails")
             .bearer_auth(access_token)
-            .header("User-Agent", "vibe-kanban-app")
+            .header("User-Agent", "automagik-forge-app")
             .send()
             .await;
         let emails_json: serde_json::Value = match emails_res {
@@ -274,7 +274,7 @@ pub async fn github_check_token(State(app_state): State<AppState>) -> ResponseJs
         let res = client
             .get("https://api.github.com/user")
             .bearer_auth(&token)
-            .header("User-Agent", "vibe-kanban-app")
+            .header("User-Agent", "automagik-forge-app")
             .send()
             .await;
         match res {
