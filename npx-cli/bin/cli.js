@@ -103,7 +103,13 @@ if (isMcpMode || isMcpSseMode) {
     const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : [];
     console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
     
-    const proc = spawn(bin, mcpArgs, { stdio: ["pipe", "pipe", "pipe"] });
+    // Set default log level to info, but allow user override via RUST_LOG environment variable
+    process.env.RUST_LOG = process.env.RUST_LOG || "info";
+    
+    const proc = spawn(bin, mcpArgs, { 
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env }
+    });
     process.stdin.pipe(proc.stdin);
     proc.stdout.pipe(process.stdout);
     proc.stderr.pipe(process.stdout);
@@ -123,10 +129,12 @@ if (isMcpMode || isMcpSseMode) {
   // Start both main backend server and MCP SSE server concurrently
   console.log(`📦 Extracting automagik-forge and automagik-forge-mcp...`);
   
-  // Set environment variables for proper port configuration
+  // Set environment variables for proper port configuration and logging
   process.env.MCP_SSE_PORT = "23002";
   process.env.PORT = "23001";
   process.env.HOST = "0.0.0.0";
+  // Set default log level to info, but allow user override via RUST_LOG environment variable
+  process.env.RUST_LOG = process.env.RUST_LOG || "info";
   
   let mainServerProc, mcpServerProc;
   let shutdownInProgress = false;
