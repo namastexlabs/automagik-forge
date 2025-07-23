@@ -191,6 +191,76 @@ pub struct GetTaskResponse {
     pub project_name: Option<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetRelatedTasksRequest {
+    #[schemars(description = "The ID of the project containing the task")]
+    pub project_id: String,
+    #[schemars(description = "The ID of the task to find related tasks for")]
+    pub task_id: String,
+    #[schemars(description = "The ID of the task attempt to use for relationship lookup")]
+    pub attempt_id: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct RelatedTaskWithRelationship {
+    #[schemars(description = "The task information")]
+    pub task: TaskSummary,
+    #[schemars(description = "The relationship type: 'parent' or 'child'")]
+    pub relationship_type: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetRelatedTasksResponse {
+    pub success: bool,
+    pub related_tasks: Vec<RelatedTaskWithRelationship>,
+    pub count: usize,
+    pub project_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateSubtaskRequest {
+    #[schemars(description = "The ID of the project to create the subtask in")]
+    pub project_id: String,
+    #[schemars(description = "The ID of the parent task")]
+    pub parent_task_id: String,
+    #[schemars(description = "The ID of the parent task attempt to link to")]
+    pub parent_attempt_id: String,
+    #[schemars(description = "The title of the subtask")]
+    pub title: String,
+    #[schemars(description = "Optional description of the subtask")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct CreateSubtaskResponse {
+    pub success: bool,
+    pub subtask: TaskSummary,
+    pub parent_task_id: String,
+    pub parent_attempt_id: String,
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct LinkTasksRequest {
+    #[schemars(description = "The ID of the project containing both tasks")]
+    pub project_id: String,
+    #[schemars(description = "The ID of the parent task")]
+    pub parent_task_id: String,
+    #[schemars(description = "The ID of the child task to link")]
+    pub child_task_id: String,
+    #[schemars(description = "The ID of the parent task attempt to use for the link")]
+    pub attempt_id: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct LinkTasksResponse {
+    pub success: bool,
+    pub parent_task_id: String,
+    pub child_task_id: String,
+    pub attempt_id: String,
+    pub message: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     pub pool: SqlitePool,
@@ -802,6 +872,609 @@ impl TaskServer {
             }
         }
     }
+
+    #[tool(
+        description = "Get related tasks (parent and children) for a specific task attempt. Requires `project_id`, `task_id`, and `attempt_id`!"
+    )]
+    async fn get_related_tasks(
+        &self,
+        Parameters(GetRelatedTasksRequest {
+            project_id,
+            task_id,
+            attempt_id,
+        }): Parameters<GetRelatedTasksRequest>,
+    ) -> Result<CallToolResult, RmcpError> {
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid project ID format. Must be a valid UUID.",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let task_uuid = match Uuid::parse_str(&task_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid task ID format. Must be a valid UUID.",
+                    "task_id": task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let attempt_uuid = match Uuid::parse_str(&attempt_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid attempt ID format. Must be a valid UUID.",
+                    "attempt_id": attempt_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Check if task exists in the specified project
+        match Task::exists(&self.pool, task_uuid, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Task not found in the specified project",
+                    "task_id": task_id,
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check task existence",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        // Get project info for response
+        let project = match Project::find_by_id(&self.pool, project_uuid).await {
+            Ok(Some(project)) => project,
+            Ok(None) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project not found",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve project",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Find related tasks using the existing method
+        match Task::find_related_tasks_by_attempt_id(&self.pool, attempt_uuid, project_uuid).await {
+            Ok(related_tasks) => {
+                let mut related_tasks_with_relationship = Vec::new();
+
+                for related_task in related_tasks {
+                    // Determine relationship type by checking if this task has the attempt as parent
+                    let relationship_type = if related_task.parent_task_attempt == Some(attempt_uuid) {
+                        "child".to_string()
+                    } else {
+                        "parent".to_string()
+                    };
+
+                    let task_summary = TaskSummary {
+                        id: related_task.id.to_string(),
+                        title: related_task.title,
+                        description: related_task.description,
+                        status: task_status_to_string(&related_task.status),
+                        created_at: related_task.created_at.to_rfc3339(),
+                        updated_at: related_task.updated_at.to_rfc3339(),
+                        has_in_progress_attempt: None,
+                        has_merged_attempt: None,
+                        last_attempt_failed: None,
+                    };
+
+                    related_tasks_with_relationship.push(RelatedTaskWithRelationship {
+                        task: task_summary,
+                        relationship_type,
+                    });
+                }
+
+                let count = related_tasks_with_relationship.len();
+                let response = GetRelatedTasksResponse {
+                    success: true,
+                    related_tasks: related_tasks_with_relationship,
+                    count,
+                    project_name: Some(project.name),
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response).unwrap(),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve related tasks",
+                    "details": e.to_string(),
+                    "attempt_id": attempt_id
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Create a subtask linked to a parent task attempt. Requires `project_id`, `parent_task_id`, `parent_attempt_id`, and `title`!"
+    )]
+    async fn create_subtask(
+        &self,
+        Parameters(CreateSubtaskRequest {
+            project_id,
+            parent_task_id,
+            parent_attempt_id,
+            title,
+            description,
+        }): Parameters<CreateSubtaskRequest>,
+    ) -> Result<CallToolResult, RmcpError> {
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid project ID format. Must be a valid UUID.",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let parent_task_uuid = match Uuid::parse_str(&parent_task_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid parent task ID format. Must be a valid UUID.",
+                    "parent_task_id": parent_task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let parent_attempt_uuid = match Uuid::parse_str(&parent_attempt_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid parent attempt ID format. Must be a valid UUID.",
+                    "parent_attempt_id": parent_attempt_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Check if project exists
+        match Project::exists(&self.pool, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project not found",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check project existence",
+                    "details": e.to_string(),
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        // Check if parent task exists in the project
+        match Task::exists(&self.pool, parent_task_uuid, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Parent task not found in the specified project",
+                    "parent_task_id": parent_task_id,
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check parent task existence",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        // Verify the parent attempt exists and belongs to the parent task
+        match sqlx::query_scalar::<_, Uuid>(
+            "SELECT task_id FROM task_attempts WHERE id = ?"
+        )
+        .bind(parent_attempt_uuid)
+        .fetch_one(&self.pool)
+        .await
+        {
+            Ok(attempt_task_id) => {
+                if attempt_task_id != parent_task_uuid {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Parent attempt does not belong to the specified parent task",
+                        "parent_task_id": parent_task_id,
+                        "parent_attempt_id": parent_attempt_id
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+            }
+            Err(sqlx::Error::RowNotFound) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Parent attempt not found",
+                    "parent_attempt_id": parent_attempt_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to verify parent attempt",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        }
+
+        // Create the subtask
+        let subtask_id = Uuid::new_v4();
+        let create_subtask_data = CreateTask {
+            project_id: project_uuid,
+            title: title.clone(),
+            description: description.clone(),
+            parent_task_attempt: Some(parent_attempt_uuid),
+        };
+
+        match Task::create(&self.pool, &create_subtask_data, subtask_id).await {
+            Ok(subtask) => {
+                let subtask_summary = TaskSummary {
+                    id: subtask.id.to_string(),
+                    title: subtask.title,
+                    description: subtask.description,
+                    status: task_status_to_string(&subtask.status),
+                    created_at: subtask.created_at.to_rfc3339(),
+                    updated_at: subtask.updated_at.to_rfc3339(),
+                    has_in_progress_attempt: Some(false),
+                    has_merged_attempt: Some(false),
+                    last_attempt_failed: Some(false),
+                };
+
+                let response = CreateSubtaskResponse {
+                    success: true,
+                    subtask: subtask_summary,
+                    parent_task_id: parent_task_id.clone(),
+                    parent_attempt_id: parent_attempt_id.clone(),
+                    message: "Subtask created successfully and linked to parent".to_string(),
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response).unwrap(),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to create subtask",
+                    "details": e.to_string(),
+                    "project_id": project_id,
+                    "title": title
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Link an existing task as a child to a parent task attempt. Requires `project_id`, `parent_task_id`, `child_task_id`, and `attempt_id`!"
+    )]
+    async fn link_tasks(
+        &self,
+        Parameters(LinkTasksRequest {
+            project_id,
+            parent_task_id,
+            child_task_id,
+            attempt_id,
+        }): Parameters<LinkTasksRequest>,
+    ) -> Result<CallToolResult, RmcpError> {
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid project ID format. Must be a valid UUID.",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let parent_task_uuid = match Uuid::parse_str(&parent_task_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid parent task ID format. Must be a valid UUID.",
+                    "parent_task_id": parent_task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let child_task_uuid = match Uuid::parse_str(&child_task_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid child task ID format. Must be a valid UUID.",
+                    "child_task_id": child_task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        let attempt_uuid = match Uuid::parse_str(&attempt_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid attempt ID format. Must be a valid UUID.",
+                    "attempt_id": attempt_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
+
+        // Prevent self-linking
+        if parent_task_uuid == child_task_uuid {
+            let error_response = serde_json::json!({
+                "success": false,
+                "error": "Cannot link a task to itself",
+                "parent_task_id": parent_task_id,
+                "child_task_id": child_task_id
+            });
+            return Ok(CallToolResult::error(vec![Content::text(
+                serde_json::to_string_pretty(&error_response).unwrap(),
+            )]));
+        }
+
+        // Check if both tasks exist in the project
+        match Task::exists(&self.pool, parent_task_uuid, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Parent task not found in the specified project",
+                    "parent_task_id": parent_task_id,
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check parent task existence",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        match Task::exists(&self.pool, child_task_uuid, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Child task not found in the specified project",
+                    "child_task_id": child_task_id,
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check child task existence",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        // Verify the attempt exists and belongs to the parent task
+        match sqlx::query_scalar::<_, Uuid>(
+            "SELECT task_id FROM task_attempts WHERE id = ?"
+        )
+        .bind(attempt_uuid)
+        .fetch_one(&self.pool)
+        .await
+        {
+            Ok(attempt_task_id) => {
+                if attempt_task_id != parent_task_uuid {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Attempt does not belong to the specified parent task",
+                        "parent_task_id": parent_task_id,
+                        "attempt_id": attempt_id
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+            }
+            Err(sqlx::Error::RowNotFound) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Attempt not found",
+                    "attempt_id": attempt_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to verify attempt",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        }
+
+        // Check if child task is already linked to another parent
+        match Task::find_by_id_and_project_id(&self.pool, child_task_uuid, project_uuid).await {
+            Ok(Some(child_task)) => {
+                if child_task.parent_task_attempt.is_some() {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Child task is already linked to another parent task attempt",
+                        "child_task_id": child_task_id,
+                        "existing_parent_attempt": child_task.parent_task_attempt
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response).unwrap(),
+                    )]));
+                }
+            }
+            Ok(None) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Child task not found",
+                    "child_task_id": child_task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check child task status",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        }
+
+        // Link the tasks
+        match Task::link_existing_tasks(&self.pool, child_task_uuid, attempt_uuid, project_uuid).await {
+            Ok(_) => {
+                let response = LinkTasksResponse {
+                    success: true,
+                    parent_task_id: parent_task_id.clone(),
+                    child_task_id: child_task_id.clone(),
+                    attempt_id: attempt_id.clone(),
+                    message: "Tasks linked successfully".to_string(),
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response).unwrap(),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to link tasks",
+                    "details": e.to_string(),
+                    "parent_task_id": parent_task_id,
+                    "child_task_id": child_task_id
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]))
+            }
+        }
+    }
 }
 
 #[tool_handler]
@@ -816,7 +1489,7 @@ impl ServerHandler for TaskServer {
                 name: "automagik-forge".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
+            instructions: Some("A task and project management server with relationship support. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task', 'get_related_tasks', 'create_subtask', 'link_tasks'. The new relationship tools allow you to work with parent-child task hierarchies. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
         }
     }
 }
