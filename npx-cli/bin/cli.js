@@ -3,6 +3,52 @@
 const { execSync, spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const zlib = require("zlib");
+
+// Fallback ZIP extraction using Node.js when unzip is not available
+function extractZipWithNode(zipPath, extractDir) {
+  const buffer = fs.readFileSync(zipPath);
+  let offset = 0;
+  
+  // Simple ZIP parser - look for file entries
+  while (offset < buffer.length - 30) {
+    // Look for local file header signature (0x04034b50)
+    if (buffer.readUInt32LE(offset) === 0x04034b50) {
+      const filenameLength = buffer.readUInt16LE(offset + 26);
+      const extraFieldLength = buffer.readUInt16LE(offset + 28);
+      const compressedSize = buffer.readUInt32LE(offset + 18);
+      const uncompressedSize = buffer.readUInt32LE(offset + 22);
+      const compressionMethod = buffer.readUInt16LE(offset + 8);
+      
+      offset += 30; // Skip local file header
+      
+      const filename = buffer.toString('utf8', offset, offset + filenameLength);
+      offset += filenameLength + extraFieldLength;
+      
+      const fileData = buffer.slice(offset, offset + compressedSize);
+      offset += compressedSize;
+      
+      // Skip directories
+      if (filename.endsWith('/')) continue;
+      
+      const outputPath = path.join(extractDir, filename);
+      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+      
+      if (compressionMethod === 0) {
+        // No compression
+        fs.writeFileSync(outputPath, fileData);
+      } else if (compressionMethod === 8) {
+        // Deflate compression
+        const decompressed = zlib.inflateRawSync(fileData);
+        fs.writeFileSync(outputPath, decompressed);
+      } else {
+        throw new Error(`Unsupported compression method: ${compressionMethod}`);
+      }
+    } else {
+      offset++;
+    }
+  }
+}
 
 // Load .env file from current working directory
 function loadEnvFile() {
@@ -105,12 +151,29 @@ function extractAndRun(baseName, launch) {
     process.exit(1);
   }
 
-  // extract
-  const unzipCmd =
-    platform === "win32"
-      ? `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`
-      : `unzip -qq -o "${zipPath}" -d "${extractDir}"`;
-  execSync(unzipCmd, { stdio: "inherit" });
+  // extract with fallback methods
+  if (platform === "win32") {
+    const unzipCmd = `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`;
+    execSync(unzipCmd, { stdio: "inherit" });
+  } else {
+    // Try unzip first, fallback to Node.js extraction if not available
+    try {
+      execSync(`unzip -qq -o "${zipPath}" -d "${extractDir}"`, { stdio: "inherit" });
+    } catch (unzipError) {
+      console.log("⚠️  unzip not found, using Node.js extraction...");
+      try {
+        // Fallback to Node.js extraction using yauzl if available, or basic implementation
+        extractZipWithNode(zipPath, extractDir);
+      } catch (nodeError) {
+        console.error("❌ Extraction failed. Please install unzip:");
+        console.error("  Ubuntu/Debian: sudo apt-get install unzip");
+        console.error("  RHEL/CentOS:   sudo yum install unzip");
+        console.error("  Alpine:        apk add unzip");
+        console.error("\nOriginal error:", unzipError.message);
+        process.exit(1);
+      }
+    }
+  }
 
   // perms & launch
   if (platform !== "win32") {
