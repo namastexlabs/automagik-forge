@@ -176,6 +176,7 @@ export function ProjectTasks() {
           project_id: projectId!,
           title,
           description: description || null,
+          wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
         });
         await fetchTasks();
@@ -197,6 +198,7 @@ export function ProjectTasks() {
           project_id: projectId!,
           title,
           description: description || null,
+          wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
           executor: executor || null,
         };
@@ -220,6 +222,7 @@ export function ProjectTasks() {
           title,
           description: description || null,
           status,
+          wish_id: editingTask.wish_id, // Keep existing wish_id
           parent_task_attempt: null,
         });
         await fetchTasks();
@@ -295,6 +298,7 @@ export function ProjectTasks() {
           title: task.title,
           description: task.description,
           status: newStatus,
+          wish_id: task.wish_id, // Keep existing wish_id
           parent_task_attempt: task.parent_task_attempt,
         });
       } catch (err) {

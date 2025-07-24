@@ -19,12 +19,14 @@ use crate::models::{
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
-    #[schemars(description = "The ID of the project to create the task in. This is required!")]
+    #[schemars(description = "The ID of the project to create the task in")]
     pub project_id: String,
     #[schemars(description = "The title of the task")]
     pub title: String,
-    #[schemars(description = "Optional description of the task")]
-    pub description: Option<String>,
+    #[schemars(description = "Description of the task")]
+    pub description: String,
+    #[schemars(description = "Wish identifier like 'refactor-authentication' or 'feature-dashboard'")]
+    pub wish_id: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -63,12 +65,14 @@ pub struct ListProjectsResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ListTasksRequest {
-    #[schemars(description = "The ID of the project to list tasks from")]
-    pub project_id: String,
+    #[schemars(description = "Optional project ID filter")]
+    pub project_id: Option<String>,
     #[schemars(
         description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'"
     )]
     pub status: Option<String>,
+    #[schemars(description = "Optional wish ID filter - primary way to group tasks")]
+    pub wish_id: Option<String>,
     #[schemars(description = "Maximum number of tasks to return (default: 50)")]
     pub limit: Option<i32>,
 }
@@ -83,6 +87,8 @@ pub struct TaskSummary {
     pub description: Option<String>,
     #[schemars(description = "Current status of the task")]
     pub status: String,
+    #[schemars(description = "Wish identifier for task grouping")]
+    pub wish_id: String,
     #[schemars(description = "When the task was created")]
     pub created_at: String,
     #[schemars(description = "When the task was last updated")]
@@ -134,16 +140,16 @@ fn task_status_to_string(status: &TaskStatus) -> String {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateTaskRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
-    #[schemars(description = "The ID of the task to update")]
+    #[schemars(description = "The unique ID of the task to update")]
     pub task_id: String,
-    #[schemars(description = "New title for the task")]
+    #[schemars(description = "Optional new title")]
     pub title: Option<String>,
-    #[schemars(description = "New description for the task")]
+    #[schemars(description = "Optional new description")]
     pub description: Option<String>,
-    #[schemars(description = "New status: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'")]
+    #[schemars(description = "Optional new status: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'")]
     pub status: Option<String>,
+    #[schemars(description = "Optional new wish assignment")]
+    pub wish_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -218,6 +224,7 @@ impl TaskServer {
             project_id,
             title,
             description,
+            wish_id,
         }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
         // Parse project_id from string to UUID
@@ -268,7 +275,8 @@ impl TaskServer {
         let create_task_data = CreateTask {
             project_id: project_uuid,
             title: title.clone(),
-            description: description.clone(),
+            description: Some(description.clone()),
+            wish_id: wish_id.clone(),
             parent_task_attempt: None,
         };
 
@@ -285,12 +293,16 @@ impl TaskServer {
                 )]))
             }
             Err(e) => {
+                let error_message = e.to_string();
+                let (user_error, details) = ("Failed to create task".to_string(), error_message.as_str());
+
                 let error_response = serde_json::json!({
                     "success": false,
-                    "error": "Failed to create task",
-                    "details": e.to_string(),
+                    "error": user_error,
+                    "details": details,
                     "project_id": project_id,
-                    "title": title
+                    "title": title,
+                    "wish_id": wish_id
                 });
                 Ok(CallToolResult::error(vec![Content::text(
                     serde_json::to_string_pretty(&error_response)
@@ -355,22 +367,28 @@ impl TaskServer {
         Parameters(ListTasksRequest {
             project_id,
             status,
+            wish_id,
             limit,
         }): Parameters<ListTasksRequest>,
     ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format. Must be a valid UUID.",
-                    "project_id": project_id
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response)
-                        .unwrap_or_else(|_| "Invalid project ID format".to_string()),
-                )]));
+        // Parse project_id if provided
+        let project_uuid = if let Some(ref project_id_str) = project_id {
+            match Uuid::parse_str(project_id_str) {
+                Ok(uuid) => Some(uuid),
+                Err(_) => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Invalid project ID format. Must be a valid UUID.",
+                        "project_id": project_id_str
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response)
+                            .unwrap_or_else(|_| "Invalid project ID format".to_string()),
+                    )]));
+                }
             }
+        } else {
+            None
         };
 
         let status_filter = if let Some(ref status_str) = status {
@@ -392,7 +410,22 @@ impl TaskServer {
             None
         };
 
-        let project = match Project::find_by_id(&self.pool, project_uuid).await {
+        // For now, require project_id since we only have project-based queries
+        let project_uuid_val = match project_uuid {
+            Some(uuid) => uuid,
+            None => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project ID is required for listing tasks"
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project ID required".to_string()),
+                )]));
+            }
+        };
+
+        let project = match Project::find_by_id(&self.pool, project_uuid_val).await {
             Ok(Some(project)) => project,
             Ok(None) => {
                 let error_response = serde_json::json!({
@@ -422,18 +455,24 @@ impl TaskServer {
         let task_limit = limit.unwrap_or(50).clamp(1, 200); // Reasonable limits
 
         let tasks_result =
-            Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid).await;
+            Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid_val).await;
 
         match tasks_result {
             Ok(tasks) => {
                 let filtered_tasks: Vec<_> = tasks
                     .into_iter()
                     .filter(|task| {
-                        if let Some(ref filter_status) = status_filter {
+                        let status_match = if let Some(ref filter_status) = status_filter {
                             &task.status == filter_status
                         } else {
                             true
-                        }
+                        };
+                        let wish_match = if let Some(ref filter_wish) = wish_id {
+                            task.wish_id == *filter_wish
+                        } else {
+                            true
+                        };
+                        status_match && wish_match
                     })
                     .take(task_limit as usize)
                     .collect();
@@ -445,6 +484,7 @@ impl TaskServer {
                         title: task.title,
                         description: task.description,
                         status: task_status_to_string(&task.status),
+                        wish_id: task.wish_id,
                         created_at: task.created_at.to_rfc3339(),
                         updated_at: task.updated_at.to_rfc3339(),
                         has_in_progress_attempt: Some(task.has_in_progress_attempt),
@@ -458,7 +498,7 @@ impl TaskServer {
                     success: true,
                     tasks: task_summaries,
                     count,
-                    project_id: project_id.clone(),
+                    project_id: project_id.clone().unwrap_or_else(|| project_uuid_val.to_string()),
                     project_name: Some(project.name),
                     applied_filters: ListTasksFilters {
                         status: status.clone(),
@@ -492,27 +532,13 @@ impl TaskServer {
     async fn update_task(
         &self,
         Parameters(UpdateTaskRequest {
-            project_id,
             task_id,
             title,
             description,
             status,
+            wish_id,
         }): Parameters<UpdateTaskRequest>,
     ) -> Result<CallToolResult, RmcpError> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                let error_response = serde_json::json!({
-                    "success": false,
-                    "error": "Invalid project ID format. Must be a valid UUID.",
-                    "project_id": project_id
-                });
-                return Ok(CallToolResult::error(vec![Content::text(
-                    serde_json::to_string_pretty(&error_response).unwrap(),
-                )]));
-            }
-        };
-
         let task_uuid = match Uuid::parse_str(&task_id) {
             Ok(uuid) => uuid,
             Err(_) => {
@@ -545,44 +571,44 @@ impl TaskServer {
             None
         };
 
-        let current_task =
-            match Task::find_by_id_and_project_id(&self.pool, task_uuid, project_uuid).await {
-                Ok(Some(task)) => task,
-                Ok(None) => {
-                    let error_response = serde_json::json!({
-                        "success": false,
-                        "error": "Task not found in the specified project",
-                        "task_id": task_id,
-                        "project_id": project_id
-                    });
-                    return Ok(CallToolResult::error(vec![Content::text(
-                        serde_json::to_string_pretty(&error_response).unwrap(),
-                    )]));
-                }
-                Err(e) => {
-                    let error_response = serde_json::json!({
-                        "success": false,
-                        "error": "Failed to retrieve task",
-                        "details": e.to_string()
-                    });
-                    return Ok(CallToolResult::error(vec![Content::text(
-                        serde_json::to_string_pretty(&error_response).unwrap(),
-                    )]));
-                }
-            };
+        let current_task = match Task::find_by_id(&self.pool, task_uuid).await {
+            Ok(Some(task)) => task,
+            Ok(None) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Task not found",
+                    "task_id": task_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve task",
+                    "details": e.to_string()
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response).unwrap(),
+                )]));
+            }
+        };
 
         let new_title = title.unwrap_or(current_task.title);
         let new_description = description.or(current_task.description);
         let new_status = status_enum.unwrap_or(current_task.status);
+        let new_wish_id = wish_id.unwrap_or(current_task.wish_id);
         let new_parent_task_attempt = current_task.parent_task_attempt;
 
         match Task::update(
             &self.pool,
             task_uuid,
-            project_uuid,
+            current_task.project_id,
             new_title,
             new_description,
             new_status,
+            new_wish_id,
             new_parent_task_attempt,
         )
         .await
@@ -593,6 +619,7 @@ impl TaskServer {
                     title: updated_task.title,
                     description: updated_task.description,
                     status: task_status_to_string(&updated_task.status),
+                    wish_id: updated_task.wish_id,
                     created_at: updated_task.created_at.to_rfc3339(),
                     updated_at: updated_task.updated_at.to_rfc3339(),
                     has_in_progress_attempt: None,
@@ -764,6 +791,7 @@ impl TaskServer {
                     title: task.title,
                     description: task.description,
                     status: task_status_to_string(&task.status),
+                    wish_id: task.wish_id,
                     created_at: task.created_at.to_rfc3339(),
                     updated_at: task.updated_at.to_rfc3339(),
                     has_in_progress_attempt: None,

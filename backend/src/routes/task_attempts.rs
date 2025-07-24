@@ -1024,6 +1024,7 @@ pub async fn approve_plan(
         project_id: project.id,
         title: format!("Execute Plan: {}", current_task.title),
         description: Some(plan_content),
+        wish_id: current_task.wish_id.clone(),
         parent_task_attempt: Some(task_attempt.id),
     };
 

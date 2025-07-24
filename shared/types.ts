@@ -42,17 +42,17 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type CreateBranch = { name: string, base_branch: string | null, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, };
 
-export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, executor: ExecutorConfig | null, };
+export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, executor: ExecutorConfig | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
+export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, wish_id: string | null, parent_task_attempt: string | null, };
 
 export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
 

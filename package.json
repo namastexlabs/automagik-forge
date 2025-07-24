@@ -1,6 +1,6 @@
 {
   "name": "automagik-forge",
-  "version": "0.1.11",
+  "version": "0.1.13",
   "private": true,
   "scripts": {
     "check": "npm run frontend:check && npm run backend:check",
