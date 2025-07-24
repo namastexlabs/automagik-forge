@@ -322,24 +322,5 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn link_existing_tasks(
-        pool: &SqlitePool,
-        child_task_id: Uuid,
-        parent_task_attempt: Uuid,
-        project_id: Uuid,
-    ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"UPDATE tasks 
-               SET parent_task_attempt = $1, updated_at = CURRENT_TIMESTAMP 
-               WHERE id = $2 AND project_id = $3 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
-            parent_task_attempt,
-            child_task_id,
-            project_id
-        )
-        .fetch_one(pool)
-        .await
-    }
 
 }
