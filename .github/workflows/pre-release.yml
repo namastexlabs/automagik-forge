@@ -69,7 +69,7 @@ jobs:
         id: version
         run: |
           # Get the latest version from npm registry
-          latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
+          latest_npm_version=$(npm view automagik-forge version 2>/dev/null || echo "0.0.0")
           echo "Latest npm version: $latest_npm_version"
 
           timestamp=$(date +%Y%m%d%H%M%S)
@@ -221,7 +221,7 @@ jobs:
 
       - name: Build backend for target
         run: |
-          cargo build --release --target ${{ matrix.target }} -p vibe-kanban
+          cargo build --release --target ${{ matrix.target }} -p automagik-forge
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
@@ -245,11 +245,11 @@ jobs:
         run: |
           mkdir -p dist
           if [[ "${{ matrix.os }}" == "windows-latest-l" ]]; then
-            cp target/${{ matrix.target }}/release/vibe-kanban.exe dist/vibe-kanban-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/automagik-forge.exe dist/automagik-forge-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/automagik-forge-mcp-${{ matrix.name }}.exe
           else
-            cp target/${{ matrix.target }}/release/vibe-kanban dist/vibe-kanban-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/automagik-forge dist/automagik-forge-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/mcp_task_server dist/automagik-forge-mcp-${{ matrix.name }}
           fi
 
       # Code signing for macOS only
@@ -268,8 +268,8 @@ jobs:
         if: runner.os == 'macOS'
         uses: indygreg/apple-code-sign-action@v1
         with:
-          input_path: target/${{ matrix.target }}/release/vibe-kanban
-          output_path: vibe-kanban
+          input_path: target/${{ matrix.target }}/release/automagik-forge
+          output_path: automagik-forge
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           sign: true
@@ -277,14 +277,14 @@ jobs:
 
       - name: Package main binary (macOS)
         if: runner.os == 'macOS'
-        run: zip vibe-kanban.zip vibe-kanban
+        run: zip automagik-forge.zip automagik-forge
 
       - name: Notarize signed binary (macOS)
         if: runner.os == 'macOS'
         uses: indygreg/apple-code-sign-action@v1
         continue-on-error: true
         with:
-          input_path: vibe-kanban.zip
+          input_path: automagik-forge.zip
           sign: false
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
@@ -294,7 +294,7 @@ jobs:
         uses: indygreg/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/mcp_task_server
-          output_path: vibe-kanban-mcp
+          output_path: automagik-forge-mcp
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           sign: true
@@ -302,14 +302,14 @@ jobs:
 
       - name: Package MCP binary (macOS)
         if: runner.os == 'macOS'
-        run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
+        run: zip automagik-forge-mcp.zip automagik-forge-mcp
 
       - name: Notarize signed MCP binary (macOS)
         if: runner.os == 'macOS'
         uses: indygreg/apple-code-sign-action@v1
         continue-on-error: true
         with:
-          input_path: vibe-kanban-mcp.zip
+          input_path: automagik-forge-mcp.zip
           sign: false
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
@@ -318,8 +318,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist
-          cp vibe-kanban.zip dist/vibe-kanban-${{ matrix.name }}.zip
-          cp vibe-kanban-mcp.zip dist/vibe-kanban-mcp-${{ matrix.name }}.zip
+          cp automagik-forge.zip dist/automagik-forge-${{ matrix.name }}.zip
+          cp automagik-forge-mcp.zip dist/automagik-forge-mcp-${{ matrix.name }}.zip
 
       - name: Clean up certificates (macOS)
         if: runner.os == 'macOS'
@@ -344,28 +344,28 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             name: linux-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+            binary: automagik-forge
+            mcp_binary: automagik-forge-mcp
           - target: x86_64-pc-windows-msvc
             name: windows-x64
-            binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
+            binary: automagik-forge.exe
+            mcp_binary: automagik-forge-mcp.exe
           - target: x86_64-apple-darwin
             name: macos-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+            binary: automagik-forge
+            mcp_binary: automagik-forge-mcp
           - target: aarch64-apple-darwin
             name: macos-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+            binary: automagik-forge
+            mcp_binary: automagik-forge-mcp
           - target: aarch64-pc-windows-msvc
             name: windows-arm64
-            binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
+            binary: automagik-forge.exe
+            mcp_binary: automagik-forge-mcp.exe
           - target: aarch64-unknown-linux-gnu
             name: linux-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+            binary: automagik-forge
+            mcp_binary: automagik-forge-mcp
     steps:
       - uses: actions/checkout@v4
         with:
@@ -392,22 +392,22 @@ jobs:
         if: matrix.name != 'macos-arm64' && matrix.name != 'macos-x64'
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
-          mkdir vibe-kanban-${{ matrix.name }}
-          mkdir vibe-kanban-mcp-${{ matrix.name }}
+          mkdir automagik-forge-${{ matrix.name }}
+          mkdir automagik-forge-mcp-${{ matrix.name }}
 
-          cp dist/vibe-kanban-${{ matrix.name }}* vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+          cp dist/automagik-forge-${{ matrix.name }}* automagik-forge-${{ matrix.name }}/${{ matrix.binary }}
+          cp dist/automagik-forge-mcp-${{ matrix.name }}* automagik-forge-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/automagik-forge.zip automagik-forge-${{ matrix.name }}/${{ matrix.binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/automagik-forge-mcp.zip automagik-forge-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
       - name: Create platform package (macOS)
         if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
-          mkdir vibe-kanban-${{ matrix.name }}
-          cp dist/vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip
+          mkdir automagik-forge-${{ matrix.name }}
+          cp dist/automagik-forge-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/automagik-forge.zip
+          cp dist/automagik-forge-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/automagik-forge-mcp.zip
 
       - name: Upload platform package artifact
         uses: actions/upload-artifact@v4
@@ -446,9 +446,9 @@ jobs:
 
       - name: Zip frontend
         run: |
-          mkdir vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          mv frontend/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          mkdir automagik-forge-${{ needs.bump-version.outputs.new_tag }}
+          mv frontend/dist automagik-forge-${{ needs.bump-version.outputs.new_tag }}
+          zip -r automagik-forge-${{ needs.bump-version.outputs.new_tag }}.zip automagik-forge-${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
@@ -466,5 +466,5 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-            vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
-            npx-cli/vibe-kanban-*.tgz
+            automagik-forge-${{ needs.bump-version.outputs.new_tag }}.zip
+            npx-cli/automagik-forge-*.tgz

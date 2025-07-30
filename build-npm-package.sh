@@ -55,7 +55,12 @@ rm automagik-forge automagik-forge-mcp
 mv automagik-forge.zip "npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
 mv automagik-forge-mcp.zip "npx-cli/dist/$PLATFORM_DIR/automagik-forge-mcp.zip"
 
-echo "✅ NPM package ready!"
+echo "✅ NPM package ready for $PLATFORM_DIR!"
 echo "📁 Files created:"
 echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
 echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge-mcp.zip"
+echo ""
+echo "🚨 IMPORTANT: This script only builds for the current platform ($PLATFORM_DIR)."
+echo "🚨           To support all platforms including macOS ARM64, use:"
+echo "🚨           ./build-all-platforms.sh (for current platform only)"
+echo "🚨           OR run the GitHub Actions pre-release workflow for all platforms."
