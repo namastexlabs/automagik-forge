@@ -92,7 +92,7 @@ function ProjectCard({
     >
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{project.name}</CardTitle>
+          <CardTitle className="text-lg font-blanka">{project.name}</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Active</Badge>
             <DropdownMenu>
