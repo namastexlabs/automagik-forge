@@ -1,7 +1,7 @@
 {
   "name": "automagik-forge",
   "private": false,
-  "version": "0.1.15",
+  "version": "0.2.0",
   "main": "index.js",
   "bin": {
     "automagik-forge": "bin/cli.js"
@@ -15,6 +15,6 @@
     "bin"
   ],
   "dependencies": {
-    "automagik-forge": "^0.1.15"
+    "automagik-forge": "^0.2.0"
   }
 }
