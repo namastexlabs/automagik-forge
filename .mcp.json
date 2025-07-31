@@ -33,25 +33,17 @@
         "EVOLUTION_API_INSTANCE": "SofIA"
       }
     },
-     "genie-agents": {
-       "command": "uvx",
-       "args": [
-         "automagik-tools@0.8.15",
-         "tool",
-         "genie-agents"
-       ],
-       "env": {
-         "GENIE_AGENTS_API_BASE_URL": "http://localhost:9888",
-         "GENIE_AGENTS_TIMEOUT": "300"
-      }
-    },
-      "postgres": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-postgres",
-          "postgresql+psycopg://Hf5x57x9QMrNBipV:q4Ozv5gjcJNERMK4@localhost:5532/hive"
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql+psycopg://Hf5x57x9QMrNBipV:q4Ozv5gjcJNERMK4@localhost:5532/hive"
         ]
+    },
+    "automagik-forge": {
+      "command": "npx",
+      "args": ["-y", "automagik-forge", "--mcp"]
     }
   }
 }

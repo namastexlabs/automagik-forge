@@ -15,10 +15,10 @@ fn main() -> anyhow::Result<()> {
     let enable_sse = args.contains(&"--mcp-sse".to_string());
     let enable_stdio = args.contains(&"--mcp".to_string()) || enable_sse;
     
-    let (stdio_mode, sse_mode) = if enable_sse {
-        (enable_stdio, true)   // STDIO if --mcp flag present, SSE always
+    let (stdio_mode, sse_mode) = if enable_stdio {
+        (true, false)   // --mcp flag: STDIO only
     } else {
-        (enable_stdio, true)   // STDIO only if --mcp flag, SSE by default
+        (false, true)   // No flags: SSE only
     };
 
     let environment = if cfg!(debug_assertions) {
@@ -187,5 +187,5 @@ fn get_sse_port() -> u16 {
     std::env::var("MCP_SSE_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(8765) // Default fallback port
+        .unwrap_or(8889) // Default fallback port to match CLI
 }

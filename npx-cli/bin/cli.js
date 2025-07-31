@@ -230,7 +230,7 @@ if (isMcpMode || isMcpSseMode) {
     });
     process.stdin.pipe(proc.stdin);
     proc.stdout.pipe(process.stdout);
-    proc.stderr.pipe(process.stdout);
+    proc.stderr.pipe(process.stderr);
 
     proc.on("exit", (c) => process.exit(c || 0));
     proc.on("error", (e) => {
