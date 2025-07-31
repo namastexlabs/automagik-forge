@@ -102,6 +102,39 @@ function getUnderlyingArch() {
   return "x64";
 }
 
+// Handle help and version flags first
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
+  console.log(`
+automagik-forge v${require("../package.json").version}
+
+Usage: npx automagik-forge [options]
+
+Options:
+  --help, -h           Show this help message
+  --version, -v        Show version
+  --mcp               Run only MCP server (STDIO mode)
+  --mcp-sse           Run only MCP server (SSE + STDIO mode)
+
+Without options: Runs both backend server and MCP SSE server concurrently
+
+Environment Variables:
+  BACKEND_PORT        Backend server port (default: 8887)
+  MCP_SSE_PORT        MCP SSE server port (default: 8889)
+  HOST               Server host (default: 127.0.0.1)
+
+Examples:
+  npx automagik-forge              # Start both servers
+  npx automagik-forge --mcp        # MCP server only (STDIO)
+  npx automagik-forge --mcp-sse    # MCP server only (SSE + STDIO)
+`);
+  process.exit(0);
+}
+
+if (process.argv.includes("--version") || process.argv.includes("-v")) {
+  console.log(require("../package.json").version);
+  process.exit(0);
+}
+
 const platform = process.platform;
 const arch = getUnderlyingArch();
 
