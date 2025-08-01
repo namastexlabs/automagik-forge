@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project } from 'shared/types';
+import { ProjectWithCreator } from 'shared/types';
 import { ProjectForm } from './project-form';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
@@ -15,10 +15,10 @@ import ProjectCard from '@/components/projects/ProjectCard.tsx';
 
 export function ProjectList() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithCreator[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingProject, setEditingProject] = useState<ProjectWithCreator | null>(null);
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
   const [focusedColumn, setFocusedColumn] = useState<string | null>(null);
@@ -52,8 +52,8 @@ export function ProjectList() {
     return 1; // sm
   };
 
-  const groupProjectsByColumns = (projects: Project[], columns: number) => {
-    const grouped: Record<string, Project[]> = {};
+  const groupProjectsByColumns = (projects: ProjectWithCreator[], columns: number) => {
+    const grouped: Record<string, ProjectWithCreator[]> = {};
     for (let i = 0; i < columns; i++) {
       grouped[`column-${i}`] = [];
     }
@@ -78,7 +78,7 @@ export function ProjectList() {
     }
   }, [projects, focusedProjectId]);
 
-  const handleViewProjectDetails = (project: Project) => {
+  const handleViewProjectDetails = (project: ProjectWithCreator) => {
     navigate(`/projects/${project.id}/tasks`);
   };
 

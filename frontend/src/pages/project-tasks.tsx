@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { projectsApi, tasksApi, templatesApi } from '@/lib/api';
+import { projectsApi, tasksApi, templatesApi, TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
@@ -37,12 +37,11 @@ import type {
   ExecutorConfig,
   ProjectWithBranch,
   TaskStatus,
-  TaskWithAttemptStatus,
   TaskTemplate,
 } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 
-type Task = TaskWithAttemptStatus;
+type Task = TaskWithUsersAndAttemptStatus;
 
 export function ProjectTasks() {
   const { projectId, taskId } = useParams<{
@@ -178,6 +177,8 @@ export function ProjectTasks() {
           description: description || null,
           wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
+          created_by: null,
+          assigned_to: null,
         });
         await fetchTasks();
         // Open the newly created task in the details panel
@@ -200,6 +201,8 @@ export function ProjectTasks() {
           description: description || null,
           wish_id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
           parent_task_attempt: null,
+          created_by: null,
+          assigned_to: null,
           executor: executor || null,
         };
         const result = await tasksApi.createAndStart(projectId!, payload);
@@ -224,6 +227,7 @@ export function ProjectTasks() {
           status,
           wish_id: editingTask.wish_id, // Keep existing wish_id
           parent_task_attempt: null,
+          assigned_to: null,
         });
         await fetchTasks();
         setEditingTask(null);
@@ -300,6 +304,7 @@ export function ProjectTasks() {
           status: newStatus,
           wish_id: task.wish_id, // Keep existing wish_id
           parent_task_attempt: task.parent_task_attempt,
+          assigned_to: null,
         });
       } catch (err) {
         // Revert the optimistic update if the API call failed

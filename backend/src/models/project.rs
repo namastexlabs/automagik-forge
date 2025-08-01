@@ -15,6 +15,7 @@ pub struct Project {
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
+    pub created_by: Option<Uuid>, // User who created this project
 
     #[ts(type = "Date")]
     #[schema(value_type = String, format = DateTime)]
@@ -33,6 +34,7 @@ pub struct CreateProject {
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
+    pub created_by: Option<Uuid>, // User creating this project
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
@@ -54,7 +56,29 @@ pub struct ProjectWithBranch {
     pub setup_script: Option<String>,
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
+    pub created_by: Option<Uuid>,
     pub current_branch: Option<String>,
+
+    #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
+    pub created_at: DateTime<Utc>,
+    #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, TS, ToSchema)]
+#[ts(export)]
+pub struct ProjectWithCreator {
+    pub id: Uuid,
+    pub name: String,
+    pub git_repo_path: String,
+    pub setup_script: Option<String>,
+    pub dev_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub created_by: Option<Uuid>,
+    pub creator_username: Option<String>,
+    pub creator_display_name: Option<String>,
 
     #[ts(type = "Date")]
     #[schema(value_type = String, format = DateTime)]
@@ -101,16 +125,50 @@ impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
         )
         .fetch_all(pool)
         .await
     }
 
+    pub async fn find_all_with_creators(pool: &SqlitePool) -> Result<Vec<ProjectWithCreator>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"SELECT 
+                p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script,
+                p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>", 
+                p.created_by as "created_by: Uuid",
+                u.username as creator_username, u.display_name as creator_display_name
+               FROM projects p
+               LEFT JOIN users u ON p.created_by = u.id
+               ORDER BY p.created_at DESC"#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let projects = records
+            .into_iter()
+            .map(|rec| ProjectWithCreator {
+                id: rec.id,
+                name: rec.name,
+                git_repo_path: rec.git_repo_path,
+                setup_script: rec.setup_script,
+                dev_script: rec.dev_script,
+                cleanup_script: rec.cleanup_script,
+                created_by: rec.created_by,
+                creator_username: rec.creator_username,
+                creator_display_name: rec.creator_display_name,
+                created_at: rec.created_at,
+                updated_at: rec.updated_at,
+            })
+            .collect();
+
+        Ok(projects)
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
             id
         )
         .fetch_optional(pool)
@@ -123,7 +181,7 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
             git_repo_path
         )
         .fetch_optional(pool)
@@ -137,7 +195,7 @@ impl Project {
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1 AND id != $2"#,
+            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1 AND id != $2"#,
             git_repo_path,
             exclude_id
         )
@@ -152,13 +210,14 @@ impl Project {
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script, cleanup_script) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO projects (id, name, git_repo_path, setup_script, dev_script, cleanup_script, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
             data.git_repo_path,
             data.setup_script,
             data.dev_script,
-            data.cleanup_script
+            data.cleanup_script,
+            data.created_by
         )
         .fetch_one(pool)
         .await
@@ -175,7 +234,7 @@ impl Project {
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"UPDATE projects SET name = $2, git_repo_path = $3, setup_script = $4, dev_script = $5, cleanup_script = $6 WHERE id = $1 RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE projects SET name = $2, git_repo_path = $3, setup_script = $4, dev_script = $5, cleanup_script = $6 WHERE id = $1 RETURNING id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             git_repo_path,
@@ -230,6 +289,7 @@ impl Project {
             setup_script: self.setup_script,
             dev_script: self.dev_script,
             cleanup_script: self.cleanup_script,
+            created_by: self.created_by,
             current_branch,
             created_at: self.created_at,
             updated_at: self.updated_at,

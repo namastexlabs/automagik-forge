@@ -4,7 +4,7 @@ use axum::{
     extract::{Query, State},
     response::Json as ResponseJson,
     routing::{get, post},
-    Json, Router,
+    Extension, Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,9 +14,11 @@ use utoipa::ToSchema;
 
 use crate::{
     app_state::AppState,
+    auth::UserContext,
     executor::ExecutorConfig,
     models::{
         config::{Config, EditorConstants, SoundConstants},
+        // user_preferences::{UserPreferences, UpdateUserPreferences},
         ApiResponse,
     },
     utils,
@@ -27,6 +29,8 @@ pub fn config_router() -> Router<AppState> {
         .route("/config", get(get_config))
         .route("/config", post(update_config))
         .route("/config/constants", get(get_config_constants))
+        // .route("/preferences", get(get_user_preferences))
+        // .route("/preferences", post(update_user_preferences))
         .route("/mcp-servers", get(get_mcp_servers))
         .route("/mcp-servers", post(update_mcp_servers))
 }
@@ -105,6 +109,71 @@ pub async fn get_config_constants() -> ResponseJson<ApiResponse<ConfigConstants>
 
     ResponseJson(ApiResponse::success(constants))
 }
+
+/*
+#[utoipa::path(
+    get,
+    path = "/preferences",
+    tag = "preferences",
+    summary = "Get user preferences",
+    description = "Retrieves the current user's preferences",
+    responses(
+        (status = 200, description = "User preferences retrieved successfully", body = ApiResponse<UserPreferences>),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn get_user_preferences(
+    State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
+) -> ResponseJson<ApiResponse<UserPreferences>> {
+    tracing::debug!("User {} requesting preferences", user_context.user.username);
+    
+    match UserPreferences::get_or_create_for_user(&app_state.db_pool, user_context.user.id).await {
+        Ok(preferences) => ResponseJson(ApiResponse::success(preferences)),
+        Err(e) => {
+            tracing::error!("Failed to get user preferences: {}", e);
+            ResponseJson(ApiResponse::error(&format!("Failed to get preferences: {}", e)))
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/preferences",
+    tag = "preferences", 
+    summary = "Update user preferences",
+    description = "Updates the current user's preferences",
+    request_body = UpdateUserPreferences,
+    responses(
+        (status = 200, description = "User preferences updated successfully", body = ApiResponse<UserPreferences>),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Failed to save preferences", body = ApiResponse<String>)
+    )
+)]
+pub async fn update_user_preferences(
+    State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
+    Json(new_preferences): Json<UpdateUserPreferences>,
+) -> ResponseJson<ApiResponse<UserPreferences>> {
+    tracing::debug!("User {} updating preferences", user_context.user.username);
+    
+    match UserPreferences::update(&app_state.db_pool, user_context.user.id, &new_preferences).await {
+        Ok(preferences) => {
+            // Track analytics preference changes if analytics setting was updated
+            if let Some(analytics_enabled) = new_preferences.analytics_enabled {
+                app_state.update_analytics_config(analytics_enabled).await;
+            }
+            
+            ResponseJson(ApiResponse::success(preferences))
+        },
+        Err(e) => {
+            tracing::error!("Failed to update user preferences: {}", e);
+            ResponseJson(ApiResponse::error(&format!("Failed to update preferences: {}", e)))
+        }
+    }
+}
+*/
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct McpServerQuery {

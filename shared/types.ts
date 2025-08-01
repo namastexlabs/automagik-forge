@@ -26,11 +26,13 @@ export type ExecutorConfig = { "type": "echo" } | { "type": "claude" } | { "type
 
 export type ExecutorConstants = { executor_types: Array<ExecutorConfig>, executor_labels: Array<string>, };
 
-export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
+export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, created_at: Date, updated_at: Date, };
 
-export type ProjectWithBranch = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, current_branch: string | null, created_at: Date, updated_at: Date, };
+export type ProjectWithBranch = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, current_branch: string | null, created_at: Date, updated_at: Date, };
+
+export type ProjectWithCreator = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, created_by: string | null, creator_username: string | null, creator_display_name: string | null, created_at: Date, updated_at: Date, };
 
 export type UpdateProject = { name: string | null, git_repo_path: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, };
 
@@ -42,17 +44,19 @@ export type GitBranch = { name: string, is_current: boolean, is_remote: boolean,
 
 export type CreateBranch = { name: string, base_branch: string | null, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, created_by: string | null, assigned_to: string | null, };
 
-export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, executor: ExecutorConfig | null, };
+export type CreateTaskAndStart = { project_id: string, title: string, description: string | null, wish_id: string, parent_task_attempt: string | null, created_by: string | null, assigned_to: string | null, executor: ExecutorConfig | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_by: string | null, assigned_to: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
+export type TaskWithAttemptStatus = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_by: string | null, assigned_to: string | null, created_at: string, updated_at: string, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, latest_attempt_executor: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, wish_id: string | null, parent_task_attempt: string | null, };
+export type TaskWithUsers = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, wish_id: string, parent_task_attempt: string | null, created_by: string | null, assigned_to: string | null, creator_username: string | null, creator_display_name: string | null, assignee_username: string | null, assignee_display_name: string | null, created_at: string, updated_at: string, };
+
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, wish_id: string | null, parent_task_attempt: string | null, assigned_to: string | null, };
 
 export type TaskTemplate = { id: string, project_id: string | null, title: string, description: string | null, template_name: string, created_at: string, updated_at: string, };
 
@@ -62,9 +66,9 @@ export type UpdateTaskTemplate = { title: string | null, description: string | n
 
 export type TaskAttemptStatus = "setuprunning" | "setupcomplete" | "setupfailed" | "executorrunning" | "executorcomplete" | "executorfailed";
 
-export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, worktree_path: string, branch: string, base_branch: string, merge_commit: string | null, executor: string | null, pr_url: string | null, pr_number: bigint | null, pr_status: string | null, pr_merged_at: string | null, worktree_deleted: boolean, setup_completed_at: string | null, created_by: string | null, created_at: string, updated_at: string, };
 
-export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, };
+export type CreateTaskAttempt = { executor: string | null, base_branch: string | null, created_by: string | null, };
 
 export type UpdateTaskAttempt = Record<string, never>;
 
@@ -75,6 +79,10 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
 export type DeviceStartResponse = { device_code: string, user_code: string, verification_uri: string, expires_in: number, interval: number, };
+
+export type AuthResponse = { access_token: string, user: User, session: UserSession, };
+
+export type UserInfoResponse = { user: User, session: UserSession | null, };
 
 export type ProcessLogsResponse = { id: string, process_type: ExecutionProcessType, command: string, executor_type: string | null, status: ExecutionProcessStatus, normalized_conversation: NormalizedConversation, };
 
@@ -117,6 +125,26 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, } | { "type": "system_message" } | { "type": "error_message" } | { "type": "thinking" };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_write", path: string, } | { "action": "command_run", command: string, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "other", description: string, };
+
+export type User = { id: string, github_id: bigint, username: string, email: string, display_name: string | null, avatar_url: string | null, github_token: string | null, is_admin: boolean, is_whitelisted: boolean, last_login_at: string | null, created_at: Date, updated_at: Date, };
+
+export type CreateUser = { github_id: bigint, username: string, email: string, display_name: string | null, avatar_url: string | null, github_token: string | null, is_admin: boolean | null, };
+
+export type UpdateUser = { username: string | null, email: string | null, display_name: string | null, avatar_url: string | null, github_token: string | null, is_admin: boolean | null, is_whitelisted: boolean | null, };
+
+export type UserSession = { id: string, user_id: string, token_hash: string, session_type: SessionType, client_info: string | null, expires_at: Date, created_at: Date, };
+
+export type SessionType = "web" | "mcp";
+
+export type CreateUserSession = { user_id: string, token_hash: string, session_type: SessionType, client_info: string | null, expires_at: string, };
+
+export type UpdateUserSession = { expires_at: string | null, client_info: string | null, };
+
+export type GitHubWhitelist = { id: string, github_username: string, github_id: bigint | null, invited_by: string | null, is_active: boolean, notes: string | null, created_at: Date, };
+
+export type CreateGitHubWhitelist = { github_username: string, github_id: bigint | null, invited_by: string | null, notes: string | null, };
+
+export type UpdateGitHubWhitelist = { github_username: string | null, github_id: bigint | null, is_active: boolean | null, notes: string | null, };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [

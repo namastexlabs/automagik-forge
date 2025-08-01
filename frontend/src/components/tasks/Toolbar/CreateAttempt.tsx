@@ -76,6 +76,7 @@ function CreateAttempt({
         await attemptsApi.create(projectId!, task.id, {
           executor: executor || selectedExecutor,
           base_branch: baseBranch || selectedBranch,
+          created_by: null,
         });
         fetchTaskAttempts();
       } catch (error) {
