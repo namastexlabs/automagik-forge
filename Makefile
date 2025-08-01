@@ -4,7 +4,7 @@
 #   make build                 # Build the project
 #   make publish               # Build and publish to NPM
 
-.PHONY: help bump bump-patch bump-minor bump-major bump-manual build publish clean check-version version
+.PHONY: help bump bump-patch bump-minor bump-major bump-prerelease bump-manual build publish publish-stable publish-prerelease clean check-version version
 
 # Default target
 help:
@@ -14,17 +14,20 @@ help:
 	@echo "  bump (bump-patch)   - Bump patch version automatically (e.g., 0.2.6 → 0.2.7)"
 	@echo "  bump-minor          - Bump minor version automatically (e.g., 0.2.6 → 0.3.0)"
 	@echo "  bump-major          - Bump major version automatically (e.g., 0.2.6 → 1.0.0)"
+	@echo "  bump-prerelease     - Bump pre-release version (e.g., 0.2.7 → 0.2.7.1, 0.2.7.1 → 0.2.7.2)"
 	@echo "  bump VERSION=x.y.z  - Bump to specific version manually"
 	@echo "  build               - Build frontend and Rust binaries"
-	@echo "  publish             - Build and publish to NPM"
+	@echo "  publish             - Build and publish stable release to NPM"
+	@echo "  publish-prerelease  - Build and publish pre-release to NPM"
 	@echo "  clean               - Clean build artifacts"
 	@echo "  version             - Show current versions across all files"
 	@echo "  help                - Show this help message"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make bump           # Auto-bump patch (recommended)"
-	@echo "  make bump-minor     # Auto-bump minor version"
-	@echo "  make bump VERSION=0.3.0  # Manual version"
+	@echo "  make bump-prerelease # Create pre-release (for bug fixes)"
+	@echo "  make publish-prerelease # Publish pre-release to test"
+	@echo "  make bump           # Stable patch version (when bugs confirmed fixed)"
+	@echo "  make publish        # Publish stable version to NPM"
 
 # Check if VERSION is provided for bump target
 check-version:
@@ -54,6 +57,10 @@ bump-minor:
 bump-major:
 	@echo "🔄 Auto-bumping major version..."
 	@node scripts/bump-version.js major
+
+bump-prerelease:
+	@echo "🔄 Auto-bumping pre-release version..."
+	@node scripts/bump-version.js prerelease
 
 # Manual version bump (legacy support)
 bump-manual: check-version
@@ -97,12 +104,33 @@ clean:
 	@rm -f *.zip
 	@echo "✅ Clean complete!"
 
-# Build and publish to NPM
-publish: build
-	@echo "📦 Publishing to NPM..."
+# Build and publish stable release to NPM
+publish: publish-stable
+
+# Publish stable version (no pre-release tag)
+publish-stable: build
+	@echo "📦 Publishing STABLE release to NPM..."
+	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
+	if [[ $$CURRENT_VERSION =~ \.[0-9]+$$ ]]; then \
+		echo "❌ Error: Current version ($$CURRENT_VERSION) appears to be a pre-release. Use 'make bump' to create a stable version first."; \
+		exit 1; \
+	fi
 	@cd npx-cli && npm publish
-	@echo "🎉 Successfully published to NPM!"
+	@echo "🎉 Successfully published STABLE version to npm!"
 	@echo "📋 Users can now install with: npx automagik-forge"
+
+# Publish pre-release version (with beta tag)
+publish-prerelease: build
+	@echo "📦 Publishing PRE-RELEASE to NPM with beta tag..."
+	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
+	if [[ ! $$CURRENT_VERSION =~ \.[0-9]+$$ ]]; then \
+		echo "❌ Error: Current version ($$CURRENT_VERSION) is not a pre-release. Use 'make bump-prerelease' first."; \
+		exit 1; \
+	fi
+	@cd npx-cli && npm publish --tag beta
+	@echo "🎉 Successfully published PRE-RELEASE version to npm!"
+	@echo "📋 Users can test with: npx automagik-forge@beta"
+	@echo "📋 Or specific version: npx automagik-forge@$$(node -p "require('./package.json').version")"
 
 # Development helpers
 dev:

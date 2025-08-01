@@ -20,7 +20,7 @@ export function useRealtimeTaskSync({
 }: RealtimeTaskSyncOptions) {
   const { subscribeToEvents } = useCollaboration();
   const lastSyncRef = useRef<number>(Date.now());
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncTimeoutRef = useRef<number | null>(null);
   const isSyncingRef = useRef(false);
 
   // Debounced sync function to avoid excessive API calls

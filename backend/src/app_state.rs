@@ -5,7 +5,10 @@ use nix::{sys::signal::Signal, unistd::Pid};
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
-use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService, CollaborationService};
+use crate::{
+    services::{generate_user_id, AnalyticsConfig, AnalyticsService, CollaborationService},
+    middleware::rate_limiter::RateLimiter,
+};
 
 #[derive(Debug)]
 pub enum ExecutionType {
@@ -29,6 +32,7 @@ pub struct AppState {
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
     pub collaboration: CollaborationService,
+    pub rate_limiter: RateLimiter,
     user_id: String,
 }
 
@@ -49,12 +53,16 @@ impl AppState {
         // Initialize collaboration service
         let collaboration = CollaborationService::new();
 
+        // Initialize rate limiter
+        let rate_limiter = RateLimiter::new();
+
         Self {
             running_executions: Arc::new(Mutex::new(HashMap::new())),
             db_pool,
             config,
             analytics,
             collaboration,
+            rate_limiter,
             user_id: generate_user_id(),
         }
     }

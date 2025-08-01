@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, LibraryBig, Globe2, Users, Activity } from 'lucide-react';
+import { FolderOpen, Plus, Settings, LibraryBig, Globe2, Users } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi, TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
@@ -64,7 +64,6 @@ export function ProjectTasks() {
     isOnline,
     currentPresence,
     events,
-    updatePresence,
     retry
   } = useCollaboration();
   

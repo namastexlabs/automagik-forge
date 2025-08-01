@@ -1,4 +1,4 @@
-import { CollaborationEvent, UserPresence, PresenceStatus } from 'shared/types';
+import { CollaborationEvent, UserPresence } from 'shared/types';
 
 export type CollaborationEventHandler = (event: CollaborationEvent) => void;
 export type PresenceEventHandler = (presence: UserPresence[]) => void;
@@ -16,8 +16,8 @@ export class CollaborationService {
   private eventSource: EventSource | null = null;
   private presenceSource: EventSource | null = null;
   private config: CollaborationServiceConfig | null = null;
-  private presenceInterval: NodeJS.Timeout | null = null;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private presenceInterval: number | null = null;
+  private reconnectTimeout: number | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
   private baseReconnectDelay: number = 1000;
@@ -125,7 +125,7 @@ export class CollaborationService {
   /**
    * Update user presence status
    */
-  async updatePresence(status: PresenceStatus): Promise<void> {
+  async updatePresence(status: string): Promise<void> {
     if (!this.config) {
       throw new Error('Not connected to collaboration service');
     }
@@ -310,11 +310,11 @@ export class CollaborationService {
     this.presenceInterval = setInterval(this.sendHeartbeat, 30000);
   }
 
-  private async sendHeartbeat(): void {
+  private async sendHeartbeat(): Promise<void> {
     if (!this.isConnected()) return;
 
     try {
-      await this.updatePresence(PresenceStatus.Online);
+      await this.updatePresence('Online');
     } catch (error) {
       console.error('[CollaborationService] Heartbeat failed:', error);
     }

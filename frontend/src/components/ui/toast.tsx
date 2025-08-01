@@ -47,7 +47,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
     setToasts(prev => [...prev, toast]);
 
     // Auto remove after duration
-    if (toast.duration > 0) {
+    if (toast.duration && toast.duration > 0) {
       setTimeout(() => {
         removeToast(id);
       }, toast.duration);
@@ -148,17 +148,17 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
 
 // Convenience function for creating toasts
 export const toast = {
-  info: (content: React.ReactNode, duration?: number) => {
+  info: (content: React.ReactNode) => {
     // This will be replaced by the actual implementation when used within ToastProvider
     console.log('Toast (info):', content);
   },
-  success: (content: React.ReactNode, duration?: number) => {
+  success: (content: React.ReactNode) => {
     console.log('Toast (success):', content);
   },
-  warning: (content: React.ReactNode, duration?: number) => {
+  warning: (content: React.ReactNode) => {
     console.log('Toast (warning):', content);
   },
-  error: (content: React.ReactNode, duration?: number) => {
+  error: (content: React.ReactNode) => {
     console.log('Toast (error):', content);
   },
 };

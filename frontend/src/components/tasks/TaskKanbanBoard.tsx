@@ -19,7 +19,7 @@ import { useCollaboration } from '@/components/context/CollaborationProvider';
 import { Badge } from '@/components/ui/badge';
 import { OnlineUserBadge, ConnectionStatus } from '@/components/collaboration/UserPresence';
 import { RecentChangeIndicator } from '@/components/collaboration/ActivityIndicator';
-import { Activity, Users, Wifi } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 type Task = TaskWithUsersAndAttemptStatus;
 

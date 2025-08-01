@@ -4,26 +4,52 @@ const fs = require('fs');
 const path = require('path');
 
 // Parse arguments
-const bumpType = process.argv[2]; // patch, minor, major
+const bumpType = process.argv[2]; // patch, minor, major, prerelease
 
-if (!bumpType || !['patch', 'minor', 'major'].includes(bumpType)) {
-  console.error('❌ Usage: node scripts/bump-version.js <patch|minor|major>');
+if (!bumpType || !['patch', 'minor', 'major', 'prerelease'].includes(bumpType)) {
+  console.error('❌ Usage: node scripts/bump-version.js <patch|minor|major|prerelease>');
   process.exit(1);
 }
 
-// Semantic version bumping function
+// Semantic version bumping function with pre-release support
 function bumpVersion(version, type) {
-  const [major, minor, patch] = version.split('.').map(Number);
+  // Handle pre-release versions (e.g., 0.2.7.1)
+  const parts = version.split('.');
   
-  switch (type) {
-    case 'major':
-      return `${major + 1}.0.0`;
-    case 'minor':
-      return `${major}.${minor + 1}.0`;
-    case 'patch':
-      return `${major}.${minor}.${patch + 1}`;
-    default:
-      throw new Error(`Invalid bump type: ${type}`);
+  if (parts.length === 4) {
+    // Current version is a pre-release (0.2.7.1)
+    const [major, minor, patch, prerelease] = parts.map(Number);
+    
+    switch (type) {
+      case 'major':
+        return `${major + 1}.0.0`;
+      case 'minor':
+        return `${major}.${minor + 1}.0`;
+      case 'patch':
+        return `${major}.${minor}.${patch + 1}`;
+      case 'prerelease':
+        return `${major}.${minor}.${patch}.${prerelease + 1}`;
+      default:
+        throw new Error(`Invalid bump type: ${type}`);
+    }
+  } else if (parts.length === 3) {
+    // Current version is stable (0.2.7)
+    const [major, minor, patch] = parts.map(Number);
+    
+    switch (type) {
+      case 'major':
+        return `${major + 1}.0.0`;
+      case 'minor':
+        return `${major}.${minor + 1}.0`;
+      case 'patch':
+        return `${major}.${minor}.${patch + 1}`;
+      case 'prerelease':
+        return `${major}.${minor}.${patch}.1`;
+      default:
+        throw new Error(`Invalid bump type: ${type}`);
+    }
+  } else {
+    throw new Error(`Invalid version format: ${version}`);
   }
 }
 
