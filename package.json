@@ -1,6 +1,6 @@
 {
   "name": "automagik-forge",
-  "version": "0.2.9-beta.3",
+  "version": "0.2.9-beta.4",
   "scripts": {
     "check": "npm run frontend:check && npm run backend:check",
     "dev": "node scripts/load-env.js && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\" \"npm run mcp:sse\"",
@@ -25,6 +25,6 @@
   },
   "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
   "dependencies": {
-    "automagik-forge": "^0.2.9-beta.3"
+    "automagik-forge": "file:npx-cli/automagik-forge-0.2.9-beta.4.tgz"
   }
 }

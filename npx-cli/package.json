@@ -1,7 +1,7 @@
 {
   "name": "automagik-forge",
   "private": false,
-  "version": "0.2.9-beta.3",
+  "version": "0.2.9-beta.4",
   "main": "index.js",
   "bin": {
     "automagik-forge": "bin/cli.js"

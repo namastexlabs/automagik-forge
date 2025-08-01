@@ -68,12 +68,12 @@ mkdir -p "npx-cli/dist/$PLATFORM_DIR"
 # Determine binary extensions
 if [[ "$PLATFORM_DIR" == windows-* ]]; then
     MAIN_BINARY="automagik-forge.exe"
-    MCP_BINARY="automagik-forge-mcp.exe"
+    MCP_BINARY="mcp_task_server.exe"
     MAIN_BINARY_PATH="target/$TARGET/release/automagik-forge.exe"
     MCP_BINARY_PATH="target/$TARGET/release/mcp_task_server.exe"
 else
     MAIN_BINARY="automagik-forge"
-    MCP_BINARY="automagik-forge-mcp"
+    MCP_BINARY="mcp_task_server"
     MAIN_BINARY_PATH="target/$TARGET/release/automagik-forge"
     MCP_BINARY_PATH="target/$TARGET/release/mcp_task_server"
 fi
@@ -83,17 +83,17 @@ cp "$MAIN_BINARY_PATH" "$MAIN_BINARY"
 cp "$MCP_BINARY_PATH" "$MCP_BINARY"
 
 zip "automagik-forge.zip" "$MAIN_BINARY"
-zip "automagik-forge-mcp.zip" "$MCP_BINARY"
+zip "mcp_task_server.zip" "$MCP_BINARY"
 
 rm "$MAIN_BINARY" "$MCP_BINARY"
 
 mv "automagik-forge.zip" "npx-cli/dist/$PLATFORM_DIR/"
-mv "automagik-forge-mcp.zip" "npx-cli/dist/$PLATFORM_DIR/"
+mv "mcp_task_server.zip" "npx-cli/dist/$PLATFORM_DIR/"
 
 echo "✅ Platform package ready for $PLATFORM_DIR!"
 echo "📁 Files created:"
 echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
-echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge-mcp.zip"
+echo "   - npx-cli/dist/$PLATFORM_DIR/mcp_task_server.zip"
 echo ""
 echo "🚨 IMPORTANT: To support all platforms (including macOS ARM64),"
 echo "🚨           run the GitHub Actions pre-release workflow instead."
