@@ -197,14 +197,12 @@ export class CollaborationService {
   private async connectEventStream(): Promise<void> {
     if (!this.config) throw new Error('No configuration available');
 
-    const url = `/api/projects/${this.config.projectId}/events/stream`;
+    // Include auth token in query parameters since EventSource cannot send custom headers
+    const url = `/api/projects/${this.config.projectId}/events/stream?token=${encodeURIComponent(this.config.authToken)}`;
     
     this.eventSource = new EventSource(url, {
       withCredentials: true,
     });
-
-    // Add custom headers for authentication (EventSource doesn't support custom headers directly)
-    // The backend should handle authentication via cookies or query parameters for SSE
     
     this.eventSource.addEventListener('message', this.handleEventSourceMessage);
     this.eventSource.addEventListener('error', this.handleEventSourceError);
@@ -230,7 +228,8 @@ export class CollaborationService {
   private async connectPresenceStream(): Promise<void> {
     if (!this.config) throw new Error('No configuration available');
 
-    const url = `/api/projects/${this.config.projectId}/presence/stream`;
+    // Include auth token in query parameters since EventSource cannot send custom headers
+    const url = `/api/projects/${this.config.projectId}/presence/stream?token=${encodeURIComponent(this.config.authToken)}`;
     
     this.presenceSource = new EventSource(url, {
       withCredentials: true,
