@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      automagik-forge:
+        specifier: file:npx-cli/automagik-forge-0.2.9-beta.4.tgz
+        version: file:npx-cli/automagik-forge-0.2.9-beta.4.tgz
     devDependencies:
       concurrently:
         specifier: ^8.2.2
@@ -1416,6 +1420,11 @@ packages:
   array-union@2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
     engines: {node: '>=8'}
+
+  automagik-forge@file:npx-cli/automagik-forge-0.2.9-beta.4.tgz:
+    resolution: {integrity: sha512-Cj6xPv/srdqxzOTHWtvBWimI3QGKQgqXQvrgBvaA71VwzAqr646hR/qUzZszszamq3j4LsATXA6qv+vkV7zOIQ==, tarball: file:npx-cli/automagik-forge-0.2.9-beta.4.tgz}
+    version: 0.2.9-beta.4
+    hasBin: true
 
   autoprefixer@10.4.21:
     resolution: {integrity: sha512-O+A6LWV5LDHSJD3LjHYoNi4VLsj/Whi7k6zG12xTYaU4cQ8oxQGckXNX8cRHK5yOZ/ppVHe0ZBXGzSV9jXdVbQ==}
@@ -3938,6 +3947,8 @@ snapshots:
       tslib: 2.8.1
 
   array-union@2.1.0: {}
+
+  automagik-forge@file:npx-cli/automagik-forge-0.2.9-beta.4.tgz: {}
 
   autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:

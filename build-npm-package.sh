@@ -2,6 +2,8 @@
 
 set -e  # Exit on any error
 
+echo "🚀 Starting complete NPM package build process..."
+
 # Detect platform and architecture
 PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -30,6 +32,16 @@ esac
 
 echo "🔍 Detected platform: $PLATFORM_DIR"
 
+echo "🗄️  Preparing database for SQLX compilation..."
+npm run prepare-db
+
+echo "✅ Database preparation complete! SQLX errors should now be resolved."
+
+echo "🔍 Running quality checks..."
+npm run check
+
+echo "✅ Quality checks passed!"
+
 echo "🧹 Cleaning previous builds..."
 rm -rf npx-cli/dist
 mkdir -p "npx-cli/dist/$PLATFORM_DIR"
@@ -55,10 +67,30 @@ rm automagik-forge mcp_task_server
 mv automagik-forge.zip "npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
 mv mcp_task_server.zip "npx-cli/dist/$PLATFORM_DIR/mcp_task_server.zip"
 
-echo "✅ NPM package ready for $PLATFORM_DIR!"
+echo "📦 Creating NPM package..."
+cd npx-cli
+
+# Create the NPM package
+npm pack
+
+# Get the generated package name
+PACKAGE_FILE=$(ls -t automagik-forge-*.tgz | head -n1)
+
+# Move it to the root directory for easy access
+mv "$PACKAGE_FILE" "../$PACKAGE_FILE"
+
+cd ..
+
+echo ""
+echo "✅ Complete NPM package build successful!"
 echo "📁 Files created:"
 echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
 echo "   - npx-cli/dist/$PLATFORM_DIR/mcp_task_server.zip"
+echo "   - $PACKAGE_FILE (ready for distribution)"
+echo ""
+echo "🎉 Your NPM package is ready!"
+echo "📦 Install locally with: npm install -g ./$PACKAGE_FILE"
+echo "🔗 Or publish with: npm publish $PACKAGE_FILE"
 echo ""
 echo "🚨 IMPORTANT: This script only builds for the current platform ($PLATFORM_DIR)."
 echo "🚨           To support all platforms including macOS ARM64, use:"

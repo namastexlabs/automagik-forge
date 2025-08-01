@@ -85,3 +85,8 @@ backend/db.sqlite
 dev_assets
 /frontend/.env.sentry-build-plugin
 .ssh
+
+# SQLX offline cache (project uses runtime validation instead)
+.sqlx/
+backend/.sqlx/
+backend/sqlx-data.json
