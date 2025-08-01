@@ -12,6 +12,8 @@ export type EditorConfig = { editor_type: EditorType, custom_command: string | n
 
 export type GitHubConfig = { pat: string | null, token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 
+export type NotificationSettings = { desktop: boolean, whatsapp: boolean, };
+
 export type EditorType = "vscode" | "cursor" | "windsurf" | "intellij" | "zed" | "custom";
 
 export type EditorConstants = { editor_types: Array<EditorType>, editor_labels: Array<string>, };

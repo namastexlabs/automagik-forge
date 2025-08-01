@@ -1,4 +1,5 @@
-use automagik_forge::services::{WhatsAppConfig, WhatsAppNotifier};
+use automagik_forge::services::whatsapp_config::WhatsAppConfig;
+use automagik_forge::services::whatsapp_notifier::WhatsAppNotifier;
 use anyhow::Result;
 
 #[tokio::main]

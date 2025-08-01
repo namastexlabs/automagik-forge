@@ -83,6 +83,7 @@ fn generate_types_content() -> String {
         automagik_forge::models::config::ThemeMode::decl(),
         automagik_forge::models::config::EditorConfig::decl(),
         automagik_forge::models::config::GitHubConfig::decl(),
+        automagik_forge::models::config::NotificationSettings::decl(),
         automagik_forge::models::config::EditorType::decl(),
         automagik_forge::models::config::EditorConstants::decl(),
         automagik_forge::models::config::SoundFile::decl(),

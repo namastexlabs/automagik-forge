@@ -439,9 +439,14 @@ export function Settings() {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="push-notifications"
-                  checked={config.push_notifications}
+                  checked={config.notifications.desktop}
                   onCheckedChange={(checked: boolean) =>
-                    updateConfig({ push_notifications: checked })
+                    updateConfig({ 
+                      notifications: { 
+                        ...config.notifications, 
+                        desktop: checked 
+                      } 
+                    })
                   }
                 />
                 <div className="space-y-0.5">
