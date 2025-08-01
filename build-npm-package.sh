@@ -32,12 +32,24 @@ esac
 
 echo "🔍 Detected platform: $PLATFORM_DIR"
 
-echo "🗄️  Preparing database for SQLX compilation..."
-npm run prepare-db
+echo "🗄️  Setting up database for SQLX compilation..."
 
-echo "✅ Database preparation complete! SQLX errors should now be resolved."
+# Create persistent database for build process
+DB_PATH="dev_assets/db.sqlite"
+mkdir -p dev_assets
 
-echo "🔍 Running quality checks..."
+# Remove existing database to ensure clean state
+rm -f "$DB_PATH"
+
+# Create database with migrations
+echo "📁 Creating database at $DB_PATH..."
+DATABASE_URL="sqlite:$DB_PATH" cargo sqlx database create --database-url "sqlite:$DB_PATH"
+DATABASE_URL="sqlite:$DB_PATH" cargo sqlx migrate run --source backend/migrations
+
+echo "✅ Database created with $(wc -c < "$DB_PATH") bytes"
+
+echo "🔍 Running quality checks with database..."
+export DATABASE_URL="sqlite:$DB_PATH"
 npm run check
 
 echo "✅ Quality checks passed!"
