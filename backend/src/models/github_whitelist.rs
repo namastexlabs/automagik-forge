@@ -270,6 +270,9 @@ impl GitHubWhitelist {
     }
 
     /// Add GitHub username to whitelist
+    // Used in bin/migrate_to_multiuser.rs:101 but appears unused to analyzer
+    // because it's called from a binary target rather than main library
+    #[allow(dead_code)]
     pub async fn add_username(
         pool: &SqlitePool,
         github_username: &str,

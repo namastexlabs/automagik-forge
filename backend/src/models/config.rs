@@ -195,6 +195,9 @@ impl Default for GitHubConfig {
 }
 
 impl EditorConfig {
+    // Used in routes/task_attempts.rs:553 and routes/projects.rs:450
+    // but appears unused to analyzer due to temporary struct instantiation
+    #[allow(dead_code)]
     pub fn get_command(&self) -> Vec<String> {
         match &self.editor_type {
             EditorType::VSCode => vec!["code".to_string()],
