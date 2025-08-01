@@ -194,6 +194,11 @@ pub async fn auth_middleware(
         tracing::warn!("Failed to update last login time: {}", e);
     }
 
+    // Extend session expiration on activity
+    if let Err(e) = UserSession::extend_session(&app_state.db_pool, session.id, session.session_type.clone()).await {
+        tracing::warn!("Failed to extend session: {}", e);
+    }
+
     // Create user context
     let user_context = UserContext { user, session };
 

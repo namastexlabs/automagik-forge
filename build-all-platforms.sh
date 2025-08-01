@@ -66,7 +66,7 @@ echo "📦 Creating distribution package for $PLATFORM_DIR..."
 mkdir -p "npx-cli/dist/$PLATFORM_DIR"
 
 # Determine binary extensions
-if [[ "$PLATFORM_DIR" == windows-* ]]; then
+if [ "${PLATFORM_DIR#windows-}" != "$PLATFORM_DIR" ]; then
     MAIN_BINARY="automagik-forge.exe"
     MCP_BINARY="mcp_task_server.exe"
     MAIN_BINARY_PATH="target/$TARGET/release/automagik-forge.exe"

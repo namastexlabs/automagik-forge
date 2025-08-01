@@ -50,8 +50,8 @@ pub struct UpdateUserSession {
 }
 
 impl UserSession {
-    /// Default session duration for web sessions (24 hours)
-    pub const WEB_SESSION_DURATION_HOURS: i64 = 24;
+    /// Default session duration for web sessions (7 days)
+    pub const WEB_SESSION_DURATION_HOURS: i64 = 24 * 7;
     
     /// Default session duration for MCP sessions (30 days)
     pub const MCP_SESSION_DURATION_DAYS: i64 = 30;
@@ -260,6 +260,28 @@ impl UserSession {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    /// Extend session expiration by refreshing it
+    pub async fn extend_session(
+        pool: &SqlitePool,
+        id: Uuid,
+        session_type: SessionType,
+    ) -> Result<(), sqlx::Error> {
+        let new_expires_at = match session_type {
+            SessionType::Web => Utc::now() + Duration::hours(Self::WEB_SESSION_DURATION_HOURS),
+            SessionType::Mcp => Utc::now() + Duration::days(Self::MCP_SESSION_DURATION_DAYS),
+        };
+
+        sqlx::query!(
+            "UPDATE user_sessions SET expires_at = $1 WHERE id = $2",
+            new_expires_at,
+            id
+        )
+        .execute(pool)
+        .await?;
+        
+        Ok(())
     }
 
     /// Check if session is expired

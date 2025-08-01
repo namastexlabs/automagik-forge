@@ -111,7 +111,7 @@ publish: publish-stable
 publish-stable: build
 	@echo "📦 Publishing STABLE release to NPM..."
 	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
-	if [[ $$CURRENT_VERSION =~ \.[0-9]+$$ ]]; then \
+	if echo "$$CURRENT_VERSION" | grep -q '\.[0-9][0-9]*$$'; then \
 		echo "❌ Error: Current version ($$CURRENT_VERSION) appears to be a pre-release. Use 'make bump' to create a stable version first."; \
 		exit 1; \
 	fi
@@ -123,7 +123,7 @@ publish-stable: build
 publish-prerelease: build
 	@echo "📦 Publishing PRE-RELEASE to NPM with beta tag..."
 	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
-	if [[ ! $$CURRENT_VERSION =~ \.[0-9]+$$ ]]; then \
+	if ! echo "$$CURRENT_VERSION" | grep -q '\.[0-9][0-9]*$$'; then \
 		echo "❌ Error: Current version ($$CURRENT_VERSION) is not a pre-release. Use 'make bump-prerelease' first."; \
 		exit 1; \
 	fi
