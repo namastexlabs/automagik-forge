@@ -4,81 +4,73 @@
 #   make build                 # Build the project
 #   make publish               # Build and publish to NPM
 
-.PHONY: help bump bump-patch bump-minor bump-major bump-prerelease bump-manual build publish publish-stable publish-prerelease clean check-version version
+.PHONY: help bump release build publish clean version
 
 # Default target
 help:
 	@echo "Automagik Forge Build Automation"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  bump (bump-patch)   - Bump patch version automatically (e.g., 0.2.6 → 0.2.7)"
-	@echo "  bump-minor          - Bump minor version automatically (e.g., 0.2.6 → 0.3.0)"
-	@echo "  bump-major          - Bump major version automatically (e.g., 0.2.6 → 1.0.0)"
-	@echo "  bump-prerelease     - Bump pre-release version (e.g., 0.2.7 → 0.2.7.1, 0.2.7.1 → 0.2.7.2)"
-	@echo "  bump VERSION=x.y.z  - Bump to specific version manually"
-	@echo "  build               - Build frontend and Rust binaries"
-	@echo "  publish             - Build and publish stable release to NPM"
-	@echo "  publish-prerelease  - Build and publish pre-release to NPM"
-	@echo "  clean               - Clean build artifacts"
-	@echo "  version             - Show current versions across all files"
-	@echo "  help                - Show this help message"
+	@echo "  bump        - Create alpha pre-release (0.2.16 → 0.2.16-alpha.0)"
+	@echo "  release     - Convert pre-release to stable (0.2.16-alpha.0 → 0.2.17)"
+	@echo "  build       - Build frontend and Rust binaries"
+	@echo "  publish     - Publish to NPM (auto-detects stable/prerelease)"
+	@echo "  clean       - Clean build artifacts"
+	@echo "  version     - Show current versions"
 	@echo ""
-	@echo "Examples:"
-	@echo "  make bump-prerelease # Create pre-release (for bug fixes)"
-	@echo "  make publish-prerelease # Publish pre-release to test"
-	@echo "  make bump           # Stable patch version (when bugs confirmed fixed)"
-	@echo "  make publish        # Publish stable version to NPM"
+	@echo "Workflow:"
+	@echo "  1. make bump     # Create pre-release"
+	@echo "  2. make publish  # Test with beta users"
+	@echo "  3. make release  # Promote to stable"
+	@echo "  4. make publish  # Release to all users"
 
-# Check if VERSION is provided for bump target
-check-version:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "❌ Error: VERSION is required. Usage: make bump VERSION=x.y.z"; \
-		exit 1; \
-	fi
-	@echo "🔄 Bumping version to $(VERSION)"
-
-# Default bump is patch version (backward compatibility)
+# Bump to pre-release version
 bump:
-	@if [ -n "$(VERSION)" ]; then \
-		$(MAKE) bump-manual VERSION=$(VERSION); \
+	@echo "🔄 Creating pre-release version..."
+	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
+	if echo "$$CURRENT_VERSION" | grep -q '\-alpha\.' ; then \
+		node scripts/bump-version.js prerelease; \
 	else \
-		$(MAKE) bump-patch; \
+		BASE_VERSION=$$(echo "$$CURRENT_VERSION" | sed 's/\.[0-9]*$$//'); \
+		if echo "$$CURRENT_VERSION" | grep -qE '\..*\..*\..*\.' ; then \
+			BASE_VERSION=$$(echo "$$CURRENT_VERSION" | sed 's/\.[0-9]*$$//'); \
+		else \
+			BASE_VERSION="$$CURRENT_VERSION"; \
+		fi; \
+		NEW_VERSION="$$BASE_VERSION-alpha.0"; \
+		sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" package.json; \
+		sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" frontend/package.json; \
+		sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" npx-cli/package.json; \
+		sed -i "0,/version = \"[^\"]*\"/s//version = \"$$NEW_VERSION\"/" backend/Cargo.toml; \
+		echo "✅ Version bumped to $$NEW_VERSION"; \
 	fi
 
-# Automatic semantic version bumps
-bump-patch:
-	@echo "🔄 Auto-bumping patch version..."
-	@node scripts/bump-version.js patch
+# Convert pre-release to stable release
+release:
+	@echo "🚀 Converting pre-release to stable version..."
+	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
+	if ! echo "$$CURRENT_VERSION" | grep -qE '\-|\..*\..*\..*\.' ; then \
+		echo "❌ Error: Current version ($$CURRENT_VERSION) is already stable."; \
+		echo "   Nothing to release."; \
+		exit 1; \
+	fi; \
+	if echo "$$CURRENT_VERSION" | grep -qE '\..*\..*\..*\.' ; then \
+		BASE_VERSION=$$(echo "$$CURRENT_VERSION" | sed 's/\.[0-9]*$$//'); \
+		PATCH=$$(echo "$$BASE_VERSION" | sed 's/.*\.//'); \
+		MINOR=$$(echo "$$BASE_VERSION" | sed 's/\.[^.]*$$//' | sed 's/.*\.//'); \
+		MAJOR=$$(echo "$$BASE_VERSION" | sed 's/\..*//'); \
+		NEW_PATCH=$$(($$PATCH + 1)); \
+		NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
+	else \
+		NEW_VERSION=$$(echo "$$CURRENT_VERSION" | sed 's/-.*//'); \
+	fi; \
+	echo "📝 Updating version from $$CURRENT_VERSION to $$NEW_VERSION"; \
+	sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" package.json; \
+	sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" frontend/package.json; \
+	sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$$NEW_VERSION\"/" npx-cli/package.json; \
+	sed -i "0,/version = \"[^\"]*\"/s//version = \"$$NEW_VERSION\"/" backend/Cargo.toml; \
+	echo "✅ Version updated to $$NEW_VERSION"
 
-bump-minor:
-	@echo "🔄 Auto-bumping minor version..."
-	@node scripts/bump-version.js minor
-
-bump-major:
-	@echo "🔄 Auto-bumping major version..."
-	@node scripts/bump-version.js major
-
-bump-prerelease:
-	@echo "🔄 Auto-bumping pre-release version..."
-	@node scripts/bump-version.js prerelease
-
-# Manual version bump (legacy support)
-bump-manual: check-version
-	@echo "📝 Updating version in all package files..."
-	@# Update root package.json
-	@sed -i 's/"version": "[^"]*"/"version": "$(VERSION)"/' package.json
-	@# Update frontend package.json
-	@sed -i 's/"version": "[^"]*"/"version": "$(VERSION)"/' frontend/package.json
-	@# Update npx-cli package.json
-	@sed -i 's/"version": "[^"]*"/"version": "$(VERSION)"/' npx-cli/package.json
-	@# Update backend Cargo.toml (only the first version under [package])
-	@sed -i '0,/version = "[^"]*"/s//version = "$(VERSION)"/' backend/Cargo.toml
-	@echo "✅ Version bumped to $(VERSION) across all files"
-	@echo "📋 Updated files:"
-	@echo "   - package.json"
-	@echo "   - frontend/package.json"
-	@echo "   - npx-cli/package.json"
-	@echo "   - backend/Cargo.toml"
 
 # Build the project
 build:
@@ -104,33 +96,29 @@ clean:
 	@rm -f *.zip
 	@echo "✅ Clean complete!"
 
-# Build and publish stable release to NPM
-publish: publish-stable
-
-# Publish stable version (no pre-release tag)
-publish-stable: build
-	@echo "📦 Publishing STABLE release to NPM..."
+# Build and publish to NPM (auto-detects stable vs prerelease)
+publish: build
+	@echo "📦 Publishing to NPM..."
 	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
-	if echo "$$CURRENT_VERSION" | grep -q '\.[0-9][0-9]*$$'; then \
-		echo "❌ Error: Current version ($$CURRENT_VERSION) appears to be a pre-release. Use 'make bump' to create a stable version first."; \
-		exit 1; \
+	if echo "$$CURRENT_VERSION" | grep -q '\-' ; then \
+		echo "📦 Detected PRE-RELEASE version: $$CURRENT_VERSION"; \
+		if echo "$$CURRENT_VERSION" | grep -q '\-alpha\.' ; then \
+			TAG="alpha"; \
+		elif echo "$$CURRENT_VERSION" | grep -q '\-beta\.' ; then \
+			TAG="beta"; \
+		else \
+			TAG="next"; \
+		fi; \
+		cd npx-cli && npm publish --tag $$TAG; \
+		echo "🎉 Successfully published PRE-RELEASE to npm!"; \
+		echo "📋 Users can test with: npx automagik-forge@$$TAG"; \
+		echo "📋 Or specific version: npx automagik-forge@$$CURRENT_VERSION"; \
+	else \
+		echo "📦 Detected STABLE version: $$CURRENT_VERSION"; \
+		cd npx-cli && npm publish; \
+		echo "🎉 Successfully published STABLE version to npm!"; \
+		echo "📋 Users can now install with: npx automagik-forge"; \
 	fi
-	@cd npx-cli && npm publish
-	@echo "🎉 Successfully published STABLE version to npm!"
-	@echo "📋 Users can now install with: npx automagik-forge"
-
-# Publish pre-release version (with beta tag)
-publish-prerelease: build
-	@echo "📦 Publishing PRE-RELEASE to NPM with beta tag..."
-	@CURRENT_VERSION=$$(node -p "require('./package.json').version"); \
-	if ! echo "$$CURRENT_VERSION" | grep -q '\.[0-9][0-9]*$$'; then \
-		echo "❌ Error: Current version ($$CURRENT_VERSION) is not a pre-release. Use 'make bump-prerelease' first."; \
-		exit 1; \
-	fi
-	@cd npx-cli && npm publish --tag beta
-	@echo "🎉 Successfully published PRE-RELEASE version to npm!"
-	@echo "📋 Users can test with: npx automagik-forge@beta"
-	@echo "📋 Or specific version: npx automagik-forge@$$(node -p "require('./package.json').version")"
 
 # Development helpers
 dev:
