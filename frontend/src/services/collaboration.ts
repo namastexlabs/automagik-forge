@@ -211,7 +211,7 @@ export class CollaborationService {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Event stream connection timeout'));
-      }, 10000);
+      }, 30000);
 
       this.eventSource!.addEventListener('open', () => {
         clearTimeout(timeout);
@@ -242,7 +242,7 @@ export class CollaborationService {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Presence stream connection timeout'));
-      }, 10000);
+      }, 30000);
 
       this.presenceSource!.addEventListener('open', () => {
         clearTimeout(timeout);
@@ -305,8 +305,8 @@ export class CollaborationService {
   }
 
   private startHeartbeat(): void {
-    // Send heartbeat every 30 seconds to maintain presence
-    this.presenceInterval = setInterval(this.sendHeartbeat, 30000);
+    // Send heartbeat every 15 seconds to maintain presence (matches backend keep-alive)
+    this.presenceInterval = setInterval(this.sendHeartbeat, 15000);
   }
 
   private async sendHeartbeat(): Promise<void> {
