@@ -2,6 +2,7 @@ use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
+use tokio::task_local;
 
 use rmcp::{
     handler::server::tool::{Parameters, ToolRouter},
@@ -22,6 +23,11 @@ use crate::models::{
     user_session::{SessionType, UserSession},
 };
 use crate::auth::{validate_jwt_token, JwtConfig};
+
+// Task-local storage for request context (workaround for rmcp middleware limitation)
+task_local! {
+    pub static REQUEST_CONTEXT: Option<String>;
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -241,11 +247,29 @@ impl TaskServer {
     }
 
     /// Extract user context from MCP request (if authenticated)
-    /// For now, returns None for backward compatibility during transition
+    /// Uses task-local storage as workaround for rmcp middleware limitations
     async fn get_user_context(&self, _request_context: Option<&str>) -> Option<(User, UserSession)> {
-        // TODO: Extract user context from rmcp request context
-        // This will be implemented when rmcp provides access to authentication context
-        // For now, MCP tools work without user attribution (Phase 1 compatibility)
+        // Try to get Bearer token from task-local storage (SSE middleware injection)
+        if let Some(bearer_token) = REQUEST_CONTEXT.try_with(|ctx| ctx.clone()).unwrap_or(None) {
+            if let Some(token) = bearer_token.strip_prefix("Bearer ") {
+                // Use JWT validation for compatibility with existing OAuth endpoints
+                let jwt_config = JwtConfig::default();
+                if let Ok(claims) = validate_jwt_token(token, &jwt_config) {
+                    if let Ok(Some(session)) = UserSession::find_by_token_hash(&self.pool, &crate::auth::hash_token(token)).await {
+                        if let Ok(claims_uuid) = claims.sub.parse::<Uuid>() {
+                            if let Ok(Some(user)) = User::find_by_id(&self.pool, claims_uuid).await {
+                                if user.is_whitelisted && session.session_type == SessionType::Mcp {
+                                    return Some((user, session));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback: MCP tools work without user attribution (STDIO mode compatibility)
+        // Note: rmcp 0.3.2 architectural limitation prevents direct OAuth integration
         None
     }
 }
@@ -261,9 +285,21 @@ impl AuthenticatedTaskServer {
     }
 
     /// Extract user context from OAuth-authenticated MCP request
-    #[allow(dead_code)] // OAuth user context extraction for future MCP authentication
+    /// Uses task-local storage as workaround for rmcp middleware limitations
     pub async fn get_user_context(&self, bearer_token: Option<&str>) -> Option<(User, UserSession)> {
-        let token = bearer_token?;
+        // Try task-local storage first (SSE middleware injection)
+        let token_string = REQUEST_CONTEXT.try_with(|ctx| ctx.clone()).unwrap_or(None);
+        let token = if let Some(token) = bearer_token {
+            token
+        } else if let Some(ref bearer_token) = token_string {
+            if let Some(token) = bearer_token.strip_prefix("Bearer ") {
+                token
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        };
         
         // First try to get user from our token store (MCP managed tokens)
         {
@@ -1001,8 +1037,8 @@ impl AuthenticatedTaskServer {
             Ok(true) => {}
         }
 
-        // Get user context from OAuth authentication - THIS IS THE KEY CHANGE
-        let user_context = self.get_user_context(None).await; // TODO: Get actual Bearer token from request context
+        // Get user context from OAuth authentication using task-local storage workaround
+        let user_context = self.get_user_context(None).await; // Uses REQUEST_CONTEXT task-local storage
         let created_by = user_context.as_ref().map(|(user, _)| user.id);
 
         let task_id = Uuid::new_v4();

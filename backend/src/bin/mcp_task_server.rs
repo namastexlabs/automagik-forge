@@ -201,10 +201,10 @@ async fn run_sse_server_authenticated(service: Arc<AuthenticatedTaskServer>, por
                 }
             };
             
-            // Apply OAuth middleware to service
+            // Apply OAuth middleware to service via task-local storage injection
             let protected_service = move || {
-                // TODO: Apply OAuth middleware here when rmcp supports middleware
-                // For now, we'll integrate OAuth validation directly in the tools
+                // OAuth middleware injects Bearer token into REQUEST_CONTEXT task-local storage
+                // which is then accessible to MCP tools via get_user_context() methods
                 service.as_ref().clone()
             };
             

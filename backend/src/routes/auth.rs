@@ -76,7 +76,15 @@ pub struct UserInfoResponse {
     )
 )]
 pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
-    let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
+    let client_id = match std::env::var("GITHUB_CLIENT_ID") {
+        Ok(id) if !id.is_empty() => id,
+        _ => {
+            tracing::error!("GITHUB_CLIENT_ID environment variable not configured");
+            return ResponseJson(ApiResponse::error(
+                "GitHub authentication not properly configured",
+            ));
+        }
+    };
 
     let params = [("client_id", client_id.as_str()), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
@@ -145,7 +153,15 @@ pub async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<AuthResponse>> {
-    let client_id = std::env::var("GITHUB_CLIENT_ID").unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
+    let client_id = match std::env::var("GITHUB_CLIENT_ID") {
+        Ok(id) if !id.is_empty() => id,
+        _ => {
+            tracing::error!("GITHUB_CLIENT_ID environment variable not configured");
+            return ResponseJson(ApiResponse::error(
+                "GitHub authentication not properly configured",
+            ));
+        }
+    };
 
     let params = [
         ("client_id", client_id.as_str()),

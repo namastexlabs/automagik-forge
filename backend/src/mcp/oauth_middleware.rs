@@ -16,7 +16,7 @@ use crate::{
         user::User,
         user_session::{SessionType, UserSession},
     },
-    mcp::task_server::McpToken,
+    mcp::task_server::{McpToken, REQUEST_CONTEXT},
 };
 
 /// OAuth validation middleware for MCP SSE connections
@@ -44,7 +44,10 @@ pub async fn validate_oauth_token_middleware(
                                         // Inject user context into request
                                         req.extensions_mut().insert(user);
                                         req.extensions_mut().insert(session);
-                                        return next.run(req).await;
+                                        
+                                        // Inject Bearer token into task-local storage for rmcp tools
+                                        let bearer_token = format!("Bearer {}", token);
+                                        return REQUEST_CONTEXT.scope(Some(bearer_token), next.run(req)).await;
                                     }
                                 }
                             }
@@ -62,7 +65,10 @@ pub async fn validate_oauth_token_middleware(
                                     // Inject user context into request
                                     req.extensions_mut().insert(user);
                                     req.extensions_mut().insert(session);
-                                    return next.run(req).await;
+                                    
+                                    // Inject Bearer token into task-local storage for rmcp tools
+                                    let bearer_token = format!("Bearer {}", token);
+                                    return REQUEST_CONTEXT.scope(Some(bearer_token), next.run(req)).await;
                                 }
                             }
                         }
@@ -110,7 +116,10 @@ pub async fn oauth_sse_authentication_middleware(
                                     if user.is_whitelisted && session.session_type == SessionType::Mcp {
                                         req.extensions_mut().insert(user);
                                         req.extensions_mut().insert(session);
-                                        return next.run(req).await;
+                                        
+                                        // Inject Bearer token into task-local storage for rmcp tools
+                                        let bearer_token = format!("Bearer {}", token);
+                                        return REQUEST_CONTEXT.scope(Some(bearer_token), next.run(req)).await;
                                     }
                                 }
                             }
@@ -127,7 +136,10 @@ pub async fn oauth_sse_authentication_middleware(
                                 if user.is_whitelisted && session.session_type == SessionType::Mcp {
                                     req.extensions_mut().insert(user);
                                     req.extensions_mut().insert(session);
-                                    return next.run(req).await;
+                                    
+                                    // Inject Bearer token into task-local storage for rmcp tools
+                                    let bearer_token = format!("Bearer {}", token);
+                                    return REQUEST_CONTEXT.scope(Some(bearer_token), next.run(req)).await;
                                 }
                             }
                         }

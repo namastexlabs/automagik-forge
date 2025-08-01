@@ -31,7 +31,7 @@
     },
     "automagik-forge": {
       "command": "npx",
-      "args": ["-y", "automagik-forge@0.2.6", "--mcp"]
+      "args": ["-y", "automagik-forge@0.2.10-beta.1", "--mcp"]
     }
   }
 }

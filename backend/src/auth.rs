@@ -35,9 +35,24 @@ pub struct JwtConfig {
 
 impl Default for JwtConfig {
     fn default() -> Self {
+        let secret = std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| {
+                // Generate a random secret using UUID to avoid hardcoded secrets
+                let random_secret = format!("{}{}{}", 
+                    uuid::Uuid::new_v4().simple(),
+                    uuid::Uuid::new_v4().simple(),
+                    uuid::Uuid::new_v4().simple()
+                );
+                tracing::warn!("JWT_SECRET not configured, using randomly generated secret (sessions will not persist across restarts)");
+                random_secret
+            });
+        
+        if secret.len() < 32 {
+            panic!("JWT_SECRET must be at least 32 characters long for security");
+        }
+        
         Self {
-            secret: std::env::var("JWT_SECRET")
-                .unwrap_or_else(|_| "automagik-forge-jwt-secret-change-in-production".to_string()),
+            secret,
             algorithm: Algorithm::HS256,
         }
     }

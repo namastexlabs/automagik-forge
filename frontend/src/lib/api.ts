@@ -345,7 +345,7 @@ export const attemptsApi = {
     fileToDelete: string
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-filefile_path=${encodeURIComponent(
+      `/api/projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/delete-file?file_path=${encodeURIComponent(
         fileToDelete
       )}`,
       {

@@ -56,7 +56,50 @@ async fn echo_handler(
 
 async fn static_handler(uri: axum::extract::Path<String>) -> impl IntoResponse {
     let path = uri.trim_start_matches('/');
+    
+    // Validate path to prevent directory traversal attacks
+    if !is_safe_path(path) {
+        tracing::warn!("Rejected unsafe path request: {}", path);
+        let response = Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Body::from("Access denied"))
+            .unwrap_or_else(|_| {
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::from("Error"))
+                    .unwrap()
+            });
+        return response;
+    }
+    
     serve_file(path).await
+}
+
+fn is_safe_path(path: &str) -> bool {
+    // Reject paths containing directory traversal sequences
+    if path.contains("..") {
+        return false;
+    }
+    
+    // Reject absolute paths
+    if path.starts_with('/') {
+        return false;
+    }
+    
+    // Reject paths with null bytes
+    if path.contains('\0') {
+        return false;
+    }
+    
+    // Only allow alphanumeric, dots, hyphens, underscores, and forward slashes
+    // This is restrictive but safe for serving static web assets
+    path.chars().all(|c| {
+        c.is_alphanumeric() 
+        || c == '.' 
+        || c == '-' 
+        || c == '_' 
+        || c == '/'
+    })
 }
 
 async fn index_handler() -> impl IntoResponse {
@@ -147,14 +190,22 @@ fn main() -> anyhow::Result<()> {
     
     let _guard = if !telemetry_disabled {
         let sentry_dsn = std::env::var("SENTRY_DSN")
-            .unwrap_or_else(|_| "https://fa5e961d24021da4e6df30e5beee03af@o4509714066571264.ingest.us.sentry.io/4509714113495040".to_string());
+            .unwrap_or_else(|_| {
+                tracing::warn!("SENTRY_DSN not configured, telemetry will be disabled");
+                String::new()
+            });
         
-        Some(sentry::init((sentry_dsn, sentry::ClientOptions {
-            release: sentry::release_name!(),
-            environment: Some(environment.into()),
-            attach_stacktrace: true,
-            ..Default::default()
-        })))
+        if sentry_dsn.is_empty() {
+            tracing::info!("Sentry telemetry disabled - no DSN configured");
+            None
+        } else {
+            Some(sentry::init((sentry_dsn, sentry::ClientOptions {
+                release: sentry::release_name!(),
+                environment: Some(environment.into()),
+                attach_stacktrace: true,
+                ..Default::default()
+            })))
+        }
     } else {
         None
     };

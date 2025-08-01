@@ -428,42 +428,33 @@ impl AuditLogger {
             AuditSeverity::Critical => "critical",
         });
 
-        let mut query = "SELECT id, event_type, user_id, ip_address, user_agent, resource, action, result, details, severity, timestamp FROM audit_log WHERE 1=1".to_string();
-        let mut bind_count = 0;
-
-        if user_id.is_some() {
-            bind_count += 1;
-            query.push_str(&format!(" AND user_id = ${}", bind_count));
-        }
-
-        if event_type_str.is_some() {
-            bind_count += 1;
-            query.push_str(&format!(" AND event_type = ${}", bind_count));
-        }
-
-        if severity_str.is_some() {
-            bind_count += 1;
-            query.push_str(&format!(" AND severity = ${}", bind_count));
-        }
-
-        query.push_str(" ORDER BY timestamp DESC");
-        query.push_str(&format!(" LIMIT ${} OFFSET ${}", bind_count + 1, bind_count + 2));
-
-        let mut query_builder = sqlx::query_as::<_, AuditEvent>(&query);
+        use sqlx::QueryBuilder;
+        
+        let mut query_builder = QueryBuilder::new(
+            "SELECT id, event_type, user_id, ip_address, user_agent, resource, action, result, details, severity, timestamp FROM audit_log WHERE 1=1"
+        );
 
         if let Some(uid) = user_id {
-            query_builder = query_builder.bind(uid);
+            query_builder.push(" AND user_id = ");
+            query_builder.push_bind(uid);
         }
+
         if let Some(et) = event_type_str {
-            query_builder = query_builder.bind(et);
+            query_builder.push(" AND event_type = ");
+            query_builder.push_bind(et);
         }
+
         if let Some(sev) = severity_str {
-            query_builder = query_builder.bind(sev);
+            query_builder.push(" AND severity = ");
+            query_builder.push_bind(sev);
         }
 
-        query_builder = query_builder.bind(limit as i64).bind(offset as i64);
+        query_builder.push(" ORDER BY timestamp DESC LIMIT ");
+        query_builder.push_bind(limit as i64);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(offset as i64);
 
-        query_builder.fetch_all(&self.db_pool).await
+        query_builder.build_query_as::<AuditEvent>().fetch_all(&self.db_pool).await
     }
 
     /// Clean up old audit logs (retention policy)
