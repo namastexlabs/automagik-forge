@@ -168,7 +168,7 @@ impl SecureString {
     }
 
     pub fn into_string(self) -> String {
-        self.data
+        self.data.clone()
     }
 }
 

@@ -4,6 +4,8 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use thiserror::Error;
 use tracing::{info, warn};
+use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -329,6 +331,7 @@ impl SessionSecurity {
             SessionType::Mcp => "mcp",
         };
 
+        let count_i64 = count as i64;
         let oldest_sessions = sqlx::query!(
             r#"SELECT id as "id!: Uuid" FROM user_sessions 
                WHERE user_id = $1 AND session_type = $2 AND expires_at > datetime('now', 'subsec')
@@ -336,7 +339,7 @@ impl SessionSecurity {
                LIMIT $3"#,
             user_id,
             session_type_str,
-            count as i64
+            count_i64
         )
         .fetch_all(&self.db_pool)
         .await?;
@@ -456,7 +459,8 @@ pub struct SessionMetrics {
     pub sessions_created_today: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
 pub struct SecurityAlert {
     pub alert_type: SecurityAlertType,
     pub description: String,
@@ -464,7 +468,8 @@ pub struct SecurityAlert {
     pub user_id: Uuid,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
 pub enum SecurityAlertType {
     ExcessiveSessions,
     StaleTokens,

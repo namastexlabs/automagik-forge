@@ -11,6 +11,7 @@ pub mod mcp;
 pub mod middleware;
 pub mod models;
 pub mod routes;
+pub mod security;
 pub mod services;
 pub mod utils;
 

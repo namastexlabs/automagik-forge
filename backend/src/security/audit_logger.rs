@@ -75,11 +75,13 @@ pub struct CreateAuditEvent {
     pub resource: String,
     pub action: String,
     pub result: AuditResult,
+    #[ts(type = "any")]
     pub details: Option<serde_json::Value>,
     pub severity: AuditSeverity,
 }
 
 /// Audit logger for security-relevant events
+#[derive(Debug, Clone)]
 pub struct AuditLogger {
     db_pool: SqlitePool,
 }
@@ -122,25 +124,42 @@ impl AuditLogger {
             AuditSeverity::Critical => "critical",
         };
 
-        sqlx::query!(
-            r#"INSERT INTO audit_log (
-                id, event_type, user_id, ip_address, user_agent, 
-                resource, action, result, details, severity, timestamp
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"#,
-            event_id,
-            event_type_str,
-            event.user_id,
-            event.ip_address,
-            event.user_agent,
-            event.resource,
-            event.action,
-            result_str,
-            details_json,
-            severity_str,
-            Utc::now()
+        // Clone values for logging before they get moved into the database query
+        let ip_address_log = event.ip_address.clone();
+        let resource_log = event.resource.clone();
+        let action_log = event.action.clone();
+
+        // Check if audit_log table exists before trying to insert
+        let table_exists = sqlx::query_scalar!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'"
         )
-        .execute(&self.db_pool)
-        .await?;
+        .fetch_optional(&self.db_pool)
+        .await?
+        .is_some();
+
+        if table_exists {
+            sqlx::query(
+                r#"INSERT INTO audit_log (
+                    id, event_type, user_id, ip_address, user_agent, 
+                    resource, action, result, details, severity, timestamp
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"#
+            )
+            .bind(event_id)
+            .bind(event_type_str)
+            .bind(event.user_id)
+            .bind(event.ip_address)
+            .bind(event.user_agent)
+            .bind(event.resource)
+            .bind(event.action)
+            .bind(result_str)
+            .bind(details_json)
+            .bind(severity_str)
+            .bind(Utc::now())
+            .execute(&self.db_pool)
+            .await?;
+        } else {
+            tracing::debug!("Audit log table does not exist, skipping database logging");
+        }
 
         // Also log to structured logging for immediate visibility
         let log_level = match event.severity {
@@ -150,18 +169,61 @@ impl AuditLogger {
             AuditSeverity::Low => tracing::Level::DEBUG,
         };
 
-        tracing::event!(
-            log_level,
-            event_id = %event_id,
-            event_type = %event_type_str,
-            user_id = ?event.user_id,
-            ip_address = ?event.ip_address,
-            resource = %event.resource,
-            action = %event.action,
-            result = %result_str,
-            severity = %severity_str,
-            "Audit event logged"
-        );
+        // Use a regular tracing macro instead of the dynamic level to avoid const issues
+        match event.severity {
+            AuditSeverity::Critical => {
+                tracing::error!(
+                    event_id = %event_id,
+                    event_type = %event_type_str,
+                    user_id = ?event.user_id,
+                    ip_address = ?ip_address_log,
+                    resource = %resource_log,
+                    action = %action_log,
+                    result = %result_str,
+                    severity = %severity_str,
+                    "Audit event logged"
+                );
+            },
+            AuditSeverity::High => {
+                tracing::warn!(
+                    event_id = %event_id,
+                    event_type = %event_type_str,
+                    user_id = ?event.user_id,
+                    ip_address = ?ip_address_log,
+                    resource = %resource_log,
+                    action = %action_log,
+                    result = %result_str,
+                    severity = %severity_str,
+                    "Audit event logged"
+                );
+            },
+            AuditSeverity::Medium => {
+                tracing::info!(
+                    event_id = %event_id,
+                    event_type = %event_type_str,
+                    user_id = ?event.user_id,
+                    ip_address = ?ip_address_log,
+                    resource = %resource_log,
+                    action = %action_log,
+                    result = %result_str,
+                    severity = %severity_str,
+                    "Audit event logged"
+                );
+            },
+            AuditSeverity::Low => {
+                tracing::debug!(
+                    event_id = %event_id,
+                    event_type = %event_type_str,
+                    user_id = ?event.user_id,
+                    ip_address = ?ip_address_log,
+                    resource = %resource_log,
+                    action = %action_log,
+                    result = %result_str,
+                    severity = %severity_str,
+                    "Audit event logged"
+                );
+            },
+        }
 
         Ok(event_id)
     }
@@ -425,14 +487,24 @@ impl AuditLogger {
 
     /// Clean up old audit logs (retention policy)
     pub async fn cleanup_old_events(&self, retention_days: u32) -> Result<u64, sqlx::Error> {
+        // Check if audit_log table exists
+        let table_exists = sqlx::query_scalar!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'"
+        )
+        .fetch_optional(&self.db_pool)
+        .await?
+        .is_some();
+
+        if !table_exists {
+            return Ok(0);
+        }
+
         let cutoff_date = Utc::now() - chrono::Duration::days(retention_days as i64);
         
-        let result = sqlx::query!(
-            "DELETE FROM audit_log WHERE timestamp < $1",
-            cutoff_date
-        )
-        .execute(&self.db_pool)
-        .await?;
+        let result = sqlx::query("DELETE FROM audit_log WHERE timestamp < ?1")
+            .bind(cutoff_date)
+            .execute(&self.db_pool)
+            .await?;
 
         let deleted_count = result.rows_affected();
         
@@ -445,51 +517,58 @@ impl AuditLogger {
 
     /// Get audit statistics
     pub async fn get_audit_statistics(&self, days: u32) -> Result<AuditStatistics, sqlx::Error> {
+        // Check if audit_log table exists
+        let table_exists = sqlx::query_scalar!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'"
+        )
+        .fetch_optional(&self.db_pool)
+        .await?
+        .is_some();
+
+        if !table_exists {
+            return Ok(AuditStatistics {
+                total_events: 0,
+                failed_auth_attempts: 0,
+                rate_limit_violations: 0,
+                security_violations: 0,
+                admin_actions: 0,
+            });
+        }
+
         let since_date = Utc::now() - chrono::Duration::days(days as i64);
 
-        let total_events = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log WHERE timestamp >= $1"#,
-            since_date
-        )
-        .fetch_one(&self.db_pool)
-        .await?
-        .count;
+        let total_events = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1")
+            .bind(since_date)
+            .fetch_one(&self.db_pool)
+            .await?;
 
-        let failed_auth_attempts = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE timestamp >= $1 AND event_type = 'authentication' AND result = 'failure'"#,
-            since_date
+        let failed_auth_attempts = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'authentication' AND result = 'failure'"
         )
+        .bind(since_date)
         .fetch_one(&self.db_pool)
-        .await?
-        .count;
+        .await?;
 
-        let rate_limit_violations = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE timestamp >= $1 AND event_type = 'rate_limit'"#,
-            since_date
+        let rate_limit_violations = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'rate_limit'"
         )
+        .bind(since_date)
         .fetch_one(&self.db_pool)
-        .await?
-        .count;
+        .await?;
 
-        let security_violations = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE timestamp >= $1 AND event_type = 'security_violation'"#,
-            since_date
+        let security_violations = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'security_violation'"
         )
+        .bind(since_date)
         .fetch_one(&self.db_pool)
-        .await?
-        .count;
+        .await?;
 
-        let admin_actions = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE timestamp >= $1 AND event_type = 'admin_action'"#,
-            since_date
+        let admin_actions = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'admin_action'"
         )
+        .bind(since_date)
         .fetch_one(&self.db_pool)
-        .await?
-        .count;
+        .await?;
 
         Ok(AuditStatistics {
             total_events: total_events as u64,

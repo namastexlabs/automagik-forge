@@ -155,7 +155,7 @@ impl RateLimitEntry {
 }
 
 /// In-memory rate limiter (for production, consider Redis-based implementation)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RateLimiter {
     entries: Arc<RwLock<HashMap<String, RateLimitEntry>>>,
 }
@@ -232,7 +232,7 @@ fn get_client_ip(headers: &HeaderMap) -> String {
     ];
 
     for header_name in &ip_headers {
-        if let Some(header_value) = headers.get(header_name) {
+        if let Some(header_value) = headers.get(*header_name) {
             if let Ok(ip_str) = header_value.to_str() {
                 // X-Forwarded-For can contain multiple IPs, take the first one
                 let ip = ip_str.split(',').next().unwrap_or(ip_str).trim();
@@ -249,11 +249,10 @@ fn get_client_ip(headers: &HeaderMap) -> String {
 
 /// Add rate limit headers to response
 fn add_rate_limit_headers(response: &mut Response, info: &RateLimitInfo) {
-    if let Ok(mut response) = response.headers_mut() {
-        response.insert("X-RateLimit-Limit", info.limit.to_string().parse().unwrap());
-        response.insert("X-RateLimit-Remaining", info.remaining.to_string().parse().unwrap());
-        response.insert("X-RateLimit-Reset", info.reset_in_seconds.to_string().parse().unwrap());
-    }
+    let headers = response.headers_mut();
+    headers.insert("X-RateLimit-Limit", info.limit.to_string().parse().unwrap());
+    headers.insert("X-RateLimit-Remaining", info.remaining.to_string().parse().unwrap());
+    headers.insert("X-RateLimit-Reset", info.reset_in_seconds.to_string().parse().unwrap());
 }
 
 /// Generic rate limiting middleware

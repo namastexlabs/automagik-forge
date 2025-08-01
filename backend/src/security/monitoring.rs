@@ -4,6 +4,8 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
+use ts_rs::TS;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -47,8 +49,11 @@ impl Default for SecurityMonitorConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
 pub struct SecurityMetrics {
+    #[ts(type = "Date")]
+    #[schema(value_type = String, format = DateTime)]
     pub timestamp: DateTime<Utc>,
     pub active_sessions: u64,
     pub failed_auth_attempts_last_hour: u64,
@@ -58,7 +63,8 @@ pub struct SecurityMetrics {
     pub system_health: SystemHealth,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
 pub struct SystemHealth {
     pub database_status: HealthStatus,
     pub authentication_status: HealthStatus,
@@ -67,7 +73,8 @@ pub struct SystemHealth {
     pub overall_status: HealthStatus,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
 pub enum HealthStatus {
     Healthy,
     Warning,
@@ -154,39 +161,43 @@ impl SecurityMonitor {
         .await?
         .count as u64;
 
-        // Get failed authentication attempts in last hour
-        let failed_auth_attempts = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE event_type = 'authentication' 
-               AND result = 'failure' 
-               AND timestamp >= $1"#,
-            one_hour_ago
+        // Check if audit_log table exists
+        let table_exists = sqlx::query_scalar!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'"
         )
-        .fetch_one(&self.db_pool)
+        .fetch_optional(&self.db_pool)
         .await?
-        .count as u64;
+        .is_some();
 
-        // Get rate limit violations in last hour
-        let rate_limit_violations = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE event_type = 'rate_limit' 
-               AND timestamp >= $1"#,
-            one_hour_ago
-        )
-        .fetch_one(&self.db_pool)
-        .await?
-        .count as u64;
+        let (failed_auth_attempts, rate_limit_violations, security_events) = if table_exists {
+            // Get failed authentication attempts in last hour
+            let failed_auth_attempts = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM audit_log WHERE event_type = 'authentication' AND result = 'failure' AND timestamp >= ?1"
+            )
+            .bind(one_hour_ago)
+            .fetch_one(&self.db_pool)
+            .await? as u64;
 
-        // Get all security events in last hour
-        let security_events = sqlx::query!(
-            r#"SELECT COUNT(*) as "count!: i64" FROM audit_log 
-               WHERE event_type IN ('security_violation', 'admin_action', 'whitelist_change') 
-               AND timestamp >= $1"#,
-            one_hour_ago
-        )
-        .fetch_one(&self.db_pool)
-        .await?
-        .count as u64;
+            // Get rate limit violations in last hour
+            let rate_limit_violations = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM audit_log WHERE event_type = 'rate_limit' AND timestamp >= ?1"
+            )
+            .bind(one_hour_ago)
+            .fetch_one(&self.db_pool)
+            .await? as u64;
+
+            // Get all security events in last hour
+            let security_events = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM audit_log WHERE event_type IN ('security_violation', 'admin_action', 'whitelist_change') AND timestamp >= ?1"
+            )
+            .bind(one_hour_ago)
+            .fetch_one(&self.db_pool)
+            .await? as u64;
+
+            (failed_auth_attempts, rate_limit_violations, security_events)
+        } else {
+            (0u64, 0u64, 0u64)
+        };
 
         // Collect suspicious activities (this is a simplified version)
         let suspicious_activities = Vec::new(); // TODO: Implement suspicious activity detection
@@ -364,7 +375,7 @@ impl SecurityMonitor {
     /// Assess overall system health
     async fn assess_system_health(&self) -> Result<SystemHealth, Box<dyn std::error::Error + Send + Sync>> {
         // Check database health
-        let database_status = match sqlx::query!("SELECT 1").fetch_one(&self.db_pool).await {
+        let database_status = match sqlx::query!("SELECT 1 as status").fetch_one(&self.db_pool).await {
             Ok(_) => HealthStatus::Healthy,
             Err(_) => HealthStatus::Critical,
         };
