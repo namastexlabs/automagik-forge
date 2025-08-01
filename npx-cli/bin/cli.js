@@ -218,7 +218,7 @@ function extractAndRun(baseName, launch) {
 }
 
 if (isMcpMode || isMcpSseMode) {
-  extractAndRun("automagik-forge-mcp", (bin) => {
+  extractAndRun("mcp_task_server", (bin) => {
     const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : ["--mcp"];
     console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
     
@@ -245,7 +245,7 @@ if (isMcpMode || isMcpSseMode) {
   });
 } else {
   // Start both main backend server and MCP SSE server concurrently
-  console.log(`📦 Extracting automagik-forge and automagik-forge-mcp...`);
+  console.log(`📦 Extracting automagik-forge and mcp_task_server...`);
   
   // Environment variables are loaded from .env file
   // Use safe defaults (localhost only) unless overridden
@@ -310,7 +310,7 @@ if (isMcpMode || isMcpSseMode) {
     });
     
     // Extract and start MCP SSE server
-    extractAndRun("automagik-forge-mcp", (mcpBin) => {
+    extractAndRun("mcp_task_server", (mcpBin) => {
       console.log(`🚀 Starting MCP SSE server on http://${host}:${mcpSsePort}/sse...`);
       mcpServerProc = spawn(mcpBin, ["--mcp-sse"], { 
         stdio: ["pipe", "pipe", "pipe"],
