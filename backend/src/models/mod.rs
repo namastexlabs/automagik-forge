@@ -1,5 +1,4 @@
 pub mod api_response;
-pub mod collaboration;
 pub mod config;
 pub mod execution_process;
 pub mod executor_session;

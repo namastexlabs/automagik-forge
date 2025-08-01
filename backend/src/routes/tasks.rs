@@ -118,10 +118,6 @@ pub async fn create_task(
                 )
                 .await;
 
-            // Broadcast real-time task creation event
-            if let Err(e) = app_state.collaboration.broadcast_task_created(&task, &user_context.user).await {
-                tracing::warn!("Failed to broadcast task creation event: {}", e);
-            }
 
             Ok(ResponseJson(ApiResponse::success(task)))
         }
@@ -205,15 +201,7 @@ pub async fn create_task_and_start(
                 )
                 .await;
 
-            // Broadcast real-time task creation event
-            if let Err(e) = app_state.collaboration.broadcast_task_created(&task, &user_context.user).await {
-                tracing::warn!("Failed to broadcast task creation event: {}", e);
-            }
 
-            // Broadcast real-time task attempt creation event
-            if let Err(e) = app_state.collaboration.broadcast_task_attempt_created(&attempt, &task, &user_context.user).await {
-                tracing::warn!("Failed to broadcast task attempt creation event: {}", e);
-            }
 
             // Start execution asynchronously (don't block the response)
             let app_state_clone = app_state.clone();
@@ -345,12 +333,6 @@ pub async fn update_task(
     .await
     {
         Ok(task) => {
-            // Broadcast real-time task update event if there were changes
-            if !changes.is_empty() {
-                if let Err(e) = app_state.collaboration.broadcast_task_updated(&task, &user_context.user, changes).await {
-                    tracing::warn!("Failed to broadcast task update event: {}", e);
-                }
-            }
             
             Ok(ResponseJson(ApiResponse::success(task)))
         }

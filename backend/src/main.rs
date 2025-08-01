@@ -39,7 +39,7 @@ use security::{
 };
 use models::{ApiResponse, Config};
 use routes::{
-    auth as routes_auth, collaboration, config, filesystem, health, oauth, projects, stream, task_attempts, task_templates, tasks,
+    auth as routes_auth, config, filesystem, health, oauth, projects, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 use utoipa::OpenApi;
@@ -226,8 +226,6 @@ fn main() -> anyhow::Result<()> {
 
             // Protected routes (require authentication)
             let protected_routes = Router::new()
-                .merge(stream::stream_router())
-                .merge(collaboration::collaboration_router())
                 .merge(filesystem::filesystem_router())
                 .route("/auth/github/check", get(routes_auth::github_check_token))
                 .route("/auth/me", get(routes_auth::get_current_user_info))

@@ -6,7 +6,7 @@ use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
 use crate::{
-    services::{generate_user_id, AnalyticsConfig, AnalyticsService, CollaborationService},
+    services::{generate_user_id, AnalyticsConfig, AnalyticsService},
     security::audit_logger::AuditLogger,
 };
 
@@ -31,7 +31,6 @@ pub struct AppState {
     pub db_pool: sqlx::SqlitePool,
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
-    pub collaboration: CollaborationService,
     #[allow(dead_code)] // Security audit system for future compliance features
     pub audit_logger: AuditLogger,
     user_id: String,
@@ -51,9 +50,6 @@ impl AppState {
         let analytics_config = AnalyticsConfig::new(user_enabled);
         let analytics = Arc::new(TokioRwLock::new(AnalyticsService::new(analytics_config)));
 
-        // Initialize collaboration service
-        let collaboration = CollaborationService::new();
-
         // Initialize audit logger
         let audit_logger = AuditLogger::new(db_pool.clone());
 
@@ -62,7 +58,6 @@ impl AppState {
             db_pool,
             config,
             analytics,
-            collaboration,
             audit_logger,
             user_id: generate_user_id(),
         }

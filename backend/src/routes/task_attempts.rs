@@ -295,10 +295,6 @@ pub async fn create_task_attempt(
                 )
                 .await;
 
-            // Broadcast real-time task attempt creation event
-            if let Err(e) = app_state.collaboration.broadcast_task_attempt_created(&attempt, &task, &user_context.user).await {
-                tracing::warn!("Failed to broadcast task attempt creation event: {}", e);
-            }
 
             // Start execution asynchronously (don't block the response)
             let app_state_clone = app_state.clone();

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, LibraryBig, Globe2, Users } from 'lucide-react';
+import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi, TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
@@ -11,10 +11,6 @@ import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 import { useAuth } from '@/components/auth-provider';
-import { useCollaboration } from '@/components/context/CollaborationProvider';
-import { UserPresenceList, ConnectionStatus } from '@/components/collaboration/UserPresence';
-import { ActivityIndicator } from '@/components/collaboration/ActivityIndicator';
-import { NotificationSettings } from '@/components/collaboration/CollaborationNotifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,17 +51,6 @@ export function ProjectTasks() {
   }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { 
-    connect, 
-    disconnect, 
-    isConnected, 
-    isConnecting,
-    connectionError,
-    isOnline,
-    currentPresence,
-    events,
-    retry
-  } = useCollaboration();
   
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<ProjectWithBranch | null>(null);
@@ -80,9 +65,6 @@ export function ProjectTasks() {
     null
   );
   
-  // Collaboration state
-  const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
-
   // Template management state
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
 
@@ -189,29 +171,6 @@ export function ProjectTasks() {
     [projectId]
   );
 
-  // Handler for real-time task updates
-  const handleTasksUpdate = useCallback((updatedTasks: Task[]) => {
-    setTasks(updatedTasks);
-    
-    // Update selected task if it was modified
-    setSelectedTask(prev => {
-      if (!prev) return prev;
-      const updatedSelectedTask = updatedTasks.find(task => task.id === prev.id);
-      return updatedSelectedTask || prev;
-    });
-  }, []);
-
-  // Handler for optimistic updates (immediate UI feedback)
-  const handleOptimisticUpdate = useCallback((updatedTasks: Task[]) => {
-    setTasks(updatedTasks);
-    
-    // Update selected task if it was modified
-    setSelectedTask(prev => {
-      if (!prev) return prev;
-      const updatedSelectedTask = updatedTasks.find(task => task.id === prev.id);
-      return updatedSelectedTask || prev;
-    });
-  }, []);
 
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
@@ -381,36 +340,17 @@ export function ProjectTasks() {
       fetchTasks();
       fetchTemplates();
 
-      // Connect to real-time collaboration if authenticated
-      if (isAuthenticated) {
-        connect(projectId).catch(error => {
-          console.error('Failed to connect to collaboration service:', error);
-        });
-      }
-
-      // Set up polling to refresh tasks every 30 seconds (reduced frequency with real-time updates)
+      // Set up polling to refresh tasks every 10 seconds
       const interval = setInterval(() => {
         fetchTasks(true); // Skip loading spinner for polling
-      }, 30000);
+      }, 10000);
 
       // Cleanup interval on unmount
       return () => {
         clearInterval(interval);
-        disconnect();
       };
     }
-  }, [projectId, isAuthenticated, connect, disconnect]);
-
-  // Handle authentication state changes
-  useEffect(() => {
-    if (projectId && isAuthenticated && !isConnected && !isConnecting) {
-      connect(projectId).catch(error => {
-        console.error('Failed to connect to collaboration service:', error);
-      });
-    } else if (!isAuthenticated && isConnected) {
-      disconnect();
-    }
-  }, [projectId, isAuthenticated, isConnected, isConnecting, connect, disconnect]);
+  }, [projectId, isAuthenticated]);
 
   // Handle direct navigation to task URLs
   useEffect(() => {
@@ -488,15 +428,6 @@ export function ProjectTasks() {
             <Button onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
               Add Task
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowCollaborationPanel(!showCollaborationPanel)}
-              className={showCollaborationPanel ? 'bg-primary/10' : ''}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Team ({currentPresence.filter(p => p.status === 'Online').length})
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -589,8 +520,6 @@ export function ProjectTasks() {
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
                 onViewTaskDetails={handleViewTaskDetails}
-                onTasksUpdate={handleTasksUpdate}
-                onOptimisticUpdate={handleOptimisticUpdate}
                 isPanelOpen={isPanelOpen}
               />
             </div>
@@ -611,56 +540,6 @@ export function ProjectTasks() {
         />
       )}
 
-      {/* Collaboration Panel - Floating */}
-      {showCollaborationPanel && (
-        <div className="fixed right-4 bottom-4 top-20 w-80 z-40 flex flex-col space-y-4">
-          <div className="flex-1 max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col space-y-4">
-            {/* Connection Status and Controls */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm">Team Collaboration</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowCollaborationPanel(false)}
-                    className="h-6 w-6 p-0"
-                  >
-                    ×
-                  </Button>
-                </div>
-                <ConnectionStatus 
-                  isConnected={isConnected}
-                  isConnecting={isConnecting}
-                  error={connectionError}
-                  isOnline={isOnline}
-                  onRetry={retry}
-                />
-              </CardContent>
-            </Card>
-
-            {/* User Presence */}
-            <div className="flex-1 overflow-hidden">
-              <UserPresenceList 
-                presence={currentPresence}
-                className="h-full"
-              />
-            </div>
-
-            {/* Activity Feed */}
-            <div className="flex-1 overflow-hidden">
-              <ActivityIndicator 
-                events={events}
-                maxEvents={10}
-                className="h-full"
-              />
-            </div>
-
-            {/* Notification Settings */}
-            <NotificationSettings />
-          </div>
-        </div>
-      )}
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}
       <TaskFormDialog

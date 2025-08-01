@@ -14,12 +14,6 @@ import {
   useKeyboardShortcuts,
   useKanbanKeyboardNavigation,
 } from '@/lib/keyboard-shortcuts.ts';
-import { useRealtimeTaskSync } from '@/hooks/useRealtimeTaskSync';
-import { useCollaboration } from '@/components/context/CollaborationProvider';
-import { Badge } from '@/components/ui/badge';
-import { OnlineUserBadge, ConnectionStatus } from '@/components/collaboration/UserPresence';
-import { RecentChangeIndicator } from '@/components/collaboration/ActivityIndicator';
-import { Users } from 'lucide-react';
 
 type Task = TaskWithUsersAndAttemptStatus;
 
@@ -30,8 +24,6 @@ interface TaskKanbanBoardProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onViewTaskDetails: (task: Task) => void;
-  onTasksUpdate: (tasks: Task[]) => void;
-  onOptimisticUpdate?: (tasks: Task[]) => void;
   isPanelOpen: boolean;
 }
 
@@ -66,8 +58,6 @@ function TaskKanbanBoard({
   onEditTask,
   onDeleteTask,
   onViewTaskDetails,
-  onTasksUpdate,
-  onOptimisticUpdate,
   isPanelOpen,
 }: TaskKanbanBoardProps) {
   const { projectId, taskId } = useParams<{
@@ -76,18 +66,6 @@ function TaskKanbanBoard({
   }>();
   const navigate = useNavigate();
   
-  // Real-time collaboration state
-  const { 
-    isConnected, 
-    isConnecting, 
-    connectionError, 
-    isOnline,
-    onlineUsers, 
-    lastEvent,
-    retry
-  } = useCollaboration();
-  
-  const [syncError, setSyncError] = useState<string | null>(null);
 
   useKeyboardShortcuts({
     navigate,
@@ -99,14 +77,6 @@ function TaskKanbanBoard({
   );
   const [focusedStatus, setFocusedStatus] = useState<TaskStatus | null>(null);
 
-  // Real-time task synchronization
-  useRealtimeTaskSync({
-    projectId: projectId!,
-    tasks,
-    onTasksUpdate,
-    onOptimisticUpdate,
-    onSyncError: setSyncError,
-  });
 
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
@@ -183,37 +153,6 @@ function TaskKanbanBoard({
 
   return (
     <div className="space-y-4">
-      {/* Collaboration Status Bar */}
-      <div className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
-        <div className="flex items-center space-x-4">
-          <ConnectionStatus 
-            isConnected={isConnected}
-            isConnecting={isConnecting}
-            error={connectionError}
-            isOnline={isOnline}
-            onRetry={retry}
-          />
-          <OnlineUserBadge onlineCount={onlineUsers.length} />
-          {onlineUsers.length > 0 && (
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <Users className="h-3 w-3" />
-              <span>
-                {onlineUsers.slice(0, 3).map(user => user.display_name || user.username).join(', ')}
-                {onlineUsers.length > 3 && ` +${onlineUsers.length - 3} more`}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          {syncError && (
-            <Badge variant="destructive" className="text-xs">
-              Sync Error: {syncError}
-            </Badge>
-          )}
-          <RecentChangeIndicator lastEvent={lastEvent} />
-        </div>
-      </div>
-
       {/* Kanban Board */}
       <KanbanProvider onDragEnd={onDragEnd}>
         {Object.entries(groupedTasks).map(([status, statusTasks]) => (

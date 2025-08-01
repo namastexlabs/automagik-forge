@@ -355,12 +355,6 @@ pub async fn update_project(
     .await
     {
         Ok(project) => {
-            // Broadcast real-time project update event if there were changes
-            if !changes.is_empty() {
-                if let Err(e) = app_state.collaboration.broadcast_project_updated(&project, &user_context.user, changes).await {
-                    tracing::warn!("Failed to broadcast project update event: {}", e);
-                }
-            }
             
             Ok(ResponseJson(ApiResponse::success(project)))
         }
