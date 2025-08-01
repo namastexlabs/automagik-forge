@@ -21,7 +21,6 @@ pub enum AuditEventType {
     SecurityViolation,
     ConfigChange,
     DataAccess,
-    RateLimit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema, sqlx::Type)]
@@ -67,6 +66,7 @@ pub enum AuditSeverity {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct CreateAuditEvent {
     pub event_type: AuditEventType,
     pub user_id: Option<Uuid>,
@@ -82,6 +82,7 @@ pub struct CreateAuditEvent {
 
 /// Audit logger for security-relevant events
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AuditLogger {
     db_pool: SqlitePool,
 }
@@ -92,6 +93,7 @@ impl AuditLogger {
     }
 
     /// Log an audit event
+    #[allow(dead_code)]
     pub async fn log_event(&self, event: CreateAuditEvent) -> Result<Uuid, sqlx::Error> {
         let event_id = Uuid::new_v4();
         let details_json = event.details.map(|d| d.to_string());
@@ -228,6 +230,7 @@ impl AuditLogger {
     }
 
     /// Log authentication event
+    #[allow(dead_code)]
     pub async fn log_authentication(
         &self,
         user_id: Option<Uuid>,
@@ -258,6 +261,7 @@ impl AuditLogger {
     }
 
     /// Log admin action
+    #[allow(dead_code)]
     pub async fn log_admin_action(
         &self,
         admin_user_id: Uuid,
@@ -306,6 +310,7 @@ impl AuditLogger {
     }
 
     /// Log whitelist change
+    #[allow(dead_code)]
     pub async fn log_whitelist_change(
         &self,
         admin_user_id: Uuid,
@@ -345,6 +350,7 @@ impl AuditLogger {
 
 
     /// Log security violation
+    #[allow(dead_code)]
     pub async fn log_security_violation(
         &self,
         user_id: Option<Uuid>,
@@ -368,6 +374,7 @@ impl AuditLogger {
     }
 
     /// Log token access (when GitHub tokens are decrypted for use)
+    #[allow(dead_code)]
     pub async fn log_token_access(
         &self,
         user_id: Uuid,
@@ -390,6 +397,7 @@ impl AuditLogger {
     }
 
     /// Get audit events with filtering
+    #[allow(dead_code)]
     pub async fn get_audit_events(
         &self,
         user_id: Option<Uuid>,
@@ -459,6 +467,7 @@ impl AuditLogger {
     }
 
     /// Clean up old audit logs (retention policy)
+    #[allow(dead_code)]
     pub async fn cleanup_old_events(&self, retention_days: u32) -> Result<u64, sqlx::Error> {
         // Check if audit_log table exists
         let table_exists = sqlx::query_scalar!(
@@ -489,6 +498,7 @@ impl AuditLogger {
     }
 
     /// Get audit statistics
+    #[allow(dead_code)]
     pub async fn get_audit_statistics(&self, days: u32) -> Result<AuditStatistics, sqlx::Error> {
         // Check if audit_log table exists
         let table_exists = sqlx::query_scalar!(
@@ -502,6 +512,7 @@ impl AuditLogger {
             return Ok(AuditStatistics {
                 total_events: 0,
                 failed_auth_attempts: 0,
+                rate_limit_violations: 0,
                 security_violations: 0,
                 admin_actions: 0,
             });
@@ -521,12 +532,7 @@ impl AuditLogger {
         .fetch_one(&self.db_pool)
         .await?;
 
-        let rate_limit_violations = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'rate_limit'"
-        )
-        .bind(since_date)
-        .fetch_one(&self.db_pool)
-        .await?;
+        let rate_limit_violations = 0i64;
 
         let security_violations = sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM audit_log WHERE timestamp >= ?1 AND event_type = 'security_violation'"
@@ -554,6 +560,7 @@ impl AuditLogger {
 
 #[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct AuditStatistics {
     pub total_events: u64,
     pub failed_auth_attempts: u64,
@@ -563,6 +570,7 @@ pub struct AuditStatistics {
 }
 
 /// Helper function to extract request context for audit logging
+#[allow(dead_code)]
 pub fn extract_request_context(
     headers: &axum::http::HeaderMap,
 ) -> (Option<String>, Option<String>) {
