@@ -1,4 +1,7 @@
 use std::future::Future;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use std::collections::HashMap;
 
 use rmcp::{
     handler::server::tool::{Parameters, ToolRouter},
@@ -15,7 +18,10 @@ use uuid::Uuid;
 use crate::models::{
     project::Project,
     task::{CreateTask, Task, TaskStatus},
+    user::User,
+    user_session::{SessionType, UserSession},
 };
+use crate::auth::{validate_jwt_token, JwtConfig};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -203,6 +209,21 @@ pub struct TaskServer {
     tool_router: ToolRouter<TaskServer>,
 }
 
+// Simple token store for MCP OAuth tokens (can be enhanced with rmcp auth later)
+#[derive(Debug, Clone)]
+pub struct McpToken {
+    pub user_id: Uuid,
+    pub scopes: Vec<String>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AuthenticatedTaskServer {
+    pub pool: SqlitePool,
+    pub token_store: Arc<RwLock<HashMap<String, McpToken>>>,
+    tool_router: ToolRouter<AuthenticatedTaskServer>,
+}
+
 impl TaskServer {
     #[allow(dead_code)]
     pub fn new(pool: SqlitePool) -> Self {
@@ -210,6 +231,78 @@ impl TaskServer {
             pool,
             tool_router: Self::tool_router(),
         }
+    }
+
+    /// Extract user context from MCP request (if authenticated)
+    /// For now, returns None for backward compatibility during transition
+    async fn get_user_context(&self, _request_context: Option<&str>) -> Option<(User, UserSession)> {
+        // TODO: Extract user context from rmcp request context
+        // This will be implemented when rmcp provides access to authentication context
+        // For now, MCP tools work without user attribution (Phase 1 compatibility)
+        None
+    }
+}
+
+impl AuthenticatedTaskServer {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self {
+            pool,
+            token_store: Arc::new(RwLock::new(HashMap::new())),
+            tool_router: Self::tool_router(),
+        }
+    }
+
+    /// Extract user context from OAuth-authenticated MCP request
+    pub async fn get_user_context(&self, bearer_token: Option<&str>) -> Option<(User, UserSession)> {
+        let token = bearer_token?;
+        
+        // First try to get user from our token store (MCP managed tokens)
+        {
+            let store = self.token_store.read().await;
+            if let Some(mcp_token) = store.get(token) {
+                if mcp_token.expires_at > chrono::Utc::now() {
+                    if let Ok(Some(user)) = User::find_by_id(&self.pool, mcp_token.user_id).await {
+                        if let Ok(Some(session)) = UserSession::find_by_token_hash(&self.pool, &crate::auth::hash_token(token)).await {
+                            if user.is_whitelisted && session.session_type == SessionType::Mcp {
+                                return Some((user, session));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback to JWT validation (for compatibility with existing OAuth endpoints)
+        let jwt_config = JwtConfig::default();
+        if let Ok(claims) = validate_jwt_token(token, &jwt_config) {
+            if let Ok(Some(session)) = UserSession::find_by_token_hash(&self.pool, &crate::auth::hash_token(token)).await {
+                if let Ok(claims_uuid) = claims.sub.parse::<Uuid>() {
+                    if let Ok(Some(user)) = User::find_by_id(&self.pool, claims_uuid).await {
+                        if user.is_whitelisted && session.session_type == SessionType::Mcp {
+                            return Some((user, session));
+                        }
+                    }
+                }
+            }
+        }
+        
+        None
+    }
+
+    /// Store OAuth access token with user context
+    pub async fn store_oauth_token(&self, token: &str, user_id: Uuid, scopes: Vec<String>) {
+        let mut store = self.token_store.write().await;
+        let mcp_token = McpToken {
+            user_id,
+            scopes,
+            expires_at: chrono::Utc::now() + chrono::Duration::days(UserSession::MCP_SESSION_DURATION_DAYS),
+        };
+        store.insert(token.to_string(), mcp_token);
+    }
+
+    /// Get token store for external middleware use
+    pub fn get_token_store(&self) -> Arc<RwLock<HashMap<String, McpToken>>> {
+        self.token_store.clone()
     }
 }
 
@@ -271,6 +364,10 @@ impl TaskServer {
             Ok(true) => {}
         }
 
+        // Extract user context if available (from OAuth authentication)
+        let user_context = self.get_user_context(None).await;
+        let created_by = user_context.as_ref().map(|(user, _)| user.id);
+
         let task_id = Uuid::new_v4();
         let create_task_data = CreateTask {
             project_id: project_uuid,
@@ -278,6 +375,8 @@ impl TaskServer {
             description: Some(description.clone()),
             wish_id: wish_id.clone(),
             parent_task_attempt: None,
+            created_by, // Use authenticated user if available
+            assigned_to: None,
         };
 
         match Task::create(&self.pool, &create_task_data, task_id).await {
@@ -610,6 +709,7 @@ impl TaskServer {
             new_status,
             new_wish_id,
             new_parent_task_attempt,
+            current_task.assigned_to, // Keep existing assignment
         )
         .await
         {
@@ -832,6 +932,332 @@ impl TaskServer {
     }
 }
 
+#[tool_router]
+impl AuthenticatedTaskServer {
+    #[tool(
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
+    )]
+    async fn create_task(
+        &self,
+        Parameters(CreateTaskRequest {
+            project_id,
+            title,
+            description,
+            wish_id,
+        }): Parameters<CreateTaskRequest>,
+    ) -> Result<CallToolResult, RmcpError> {
+        // Parse project_id from string to UUID
+        let project_uuid = match Uuid::parse_str(&project_id) {
+            Ok(uuid) => uuid,
+            Err(_) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Invalid project ID format. Must be a valid UUID.",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Invalid project ID format".to_string()),
+                )]));
+            }
+        };
+
+        // Check if project exists
+        match Project::exists(&self.pool, project_uuid).await {
+            Ok(false) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project not found",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project not found".to_string()),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check project existence",
+                    "details": e.to_string(),
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
+                )]));
+            }
+            Ok(true) => {}
+        }
+
+        // Get user context from OAuth authentication - THIS IS THE KEY CHANGE
+        let user_context = self.get_user_context(None).await; // TODO: Get actual Bearer token from request context
+        let created_by = user_context.as_ref().map(|(user, _)| user.id);
+
+        let task_id = Uuid::new_v4();
+        let create_task_data = CreateTask {
+            project_id: project_uuid,
+            title: title.clone(),
+            description: Some(description.clone()),
+            wish_id: wish_id.clone(),
+            parent_task_attempt: None,
+            created_by, // Use authenticated user
+            assigned_to: None,
+        };
+
+        match Task::create(&self.pool, &create_task_data, task_id).await {
+            Ok(_task) => {
+                let success_response = CreateTaskResponse {
+                    success: true,
+                    task_id: task_id.to_string(),
+                    message: format!("Task created successfully{}", 
+                        if let Some((user, _)) = user_context {
+                            format!(" by {}", user.display_name.unwrap_or(user.username))
+                        } else {
+                            " (anonymous)".to_string()
+                        }
+                    ),
+                };
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&success_response)
+                        .unwrap_or_else(|_| "Task created successfully".to_string()),
+                )]))
+            }
+            Err(e) => {
+                let error_message = e.to_string();
+                let (user_error, details) = ("Failed to create task".to_string(), error_message.as_str());
+
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": user_error,
+                    "details": details,
+                    "project_id": project_id,
+                    "title": title,
+                    "wish_id": wish_id
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Failed to create task".to_string()),
+                )]))
+            }
+        }
+    }
+
+    #[tool(description = "List all the available projects")]
+    async fn list_projects(&self) -> Result<CallToolResult, RmcpError> {
+        match Project::find_all(&self.pool).await {
+            Ok(projects) => {
+                let count = projects.len();
+                let project_summaries: Vec<ProjectSummary> = projects
+                    .into_iter()
+                    .map(|project| {
+                        let project_with_branch = project.with_branch_info();
+                        ProjectSummary {
+                            id: project_with_branch.id.to_string(),
+                            name: project_with_branch.name,
+                            git_repo_path: project_with_branch.git_repo_path,
+                            setup_script: project_with_branch.setup_script,
+                            dev_script: project_with_branch.dev_script,
+                            current_branch: project_with_branch.current_branch,
+                            created_at: project_with_branch.created_at.to_rfc3339(),
+                            updated_at: project_with_branch.updated_at.to_rfc3339(),
+                        }
+                    })
+                    .collect();
+
+                let response = ListProjectsResponse {
+                    success: true,
+                    projects: project_summaries,
+                    count,
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response)
+                        .unwrap_or_else(|_| "Failed to serialize projects".to_string()),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve projects",
+                    "details": e.to_string()
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
+                )]))
+            }
+        }
+    }
+
+    #[tool(
+        description = "List all the task/tickets in a project with optional filtering and execution status. `project_id` is required!"
+    )]
+    async fn list_tasks(
+        &self,
+        Parameters(ListTasksRequest {
+            project_id,
+            status,
+            wish_id,
+            limit,
+        }): Parameters<ListTasksRequest>,
+    ) -> Result<CallToolResult, RmcpError> {
+        // Parse project_id if provided
+        let project_uuid = if let Some(ref project_id_str) = project_id {
+            match Uuid::parse_str(project_id_str) {
+                Ok(uuid) => Some(uuid),
+                Err(_) => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Invalid project ID format. Must be a valid UUID.",
+                        "project_id": project_id_str
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response)
+                            .unwrap_or_else(|_| "Invalid project ID format".to_string()),
+                    )]));
+                }
+            }
+        } else {
+            None
+        };
+
+        let status_filter = if let Some(ref status_str) = status {
+            match parse_task_status(status_str) {
+                Some(status) => Some(status),
+                None => {
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "error": "Invalid status filter. Valid values: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'",
+                        "provided_status": status_str
+                    });
+                    return Ok(CallToolResult::error(vec![Content::text(
+                        serde_json::to_string_pretty(&error_response)
+                            .unwrap_or_else(|_| "Invalid status filter".to_string()),
+                    )]));
+                }
+            }
+        } else {
+            None
+        };
+
+        // For now, require project_id since we only have project-based queries
+        let project_uuid_val = match project_uuid {
+            Some(uuid) => uuid,
+            None => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project ID is required for listing tasks"
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project ID required".to_string()),
+                )]));
+            }
+        };
+
+        let project = match Project::find_by_id(&self.pool, project_uuid_val).await {
+            Ok(Some(project)) => project,
+            Ok(None) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Project not found",
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Project not found".to_string()),
+                )]));
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to check project existence",
+                    "details": e.to_string(),
+                    "project_id": project_id
+                });
+                return Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
+                )]));
+            }
+        };
+
+        let task_limit = limit.unwrap_or(50).clamp(1, 200); // Reasonable limits
+
+        let tasks_result =
+            Task::find_by_project_id_with_attempt_status(&self.pool, project_uuid_val).await;
+
+        match tasks_result {
+            Ok(tasks) => {
+                let filtered_tasks: Vec<_> = tasks
+                    .into_iter()
+                    .filter(|task| {
+                        let status_match = if let Some(ref filter_status) = status_filter {
+                            &task.status == filter_status
+                        } else {
+                            true
+                        };
+                        let wish_match = if let Some(ref filter_wish) = wish_id {
+                            task.wish_id == *filter_wish
+                        } else {
+                            true
+                        };
+                        status_match && wish_match
+                    })
+                    .take(task_limit as usize)
+                    .collect();
+
+                let task_summaries: Vec<TaskSummary> = filtered_tasks
+                    .into_iter()
+                    .map(|task| TaskSummary {
+                        id: task.id.to_string(),
+                        title: task.title,
+                        description: task.description,
+                        status: task_status_to_string(&task.status),
+                        wish_id: task.wish_id,
+                        created_at: task.created_at.to_rfc3339(),
+                        updated_at: task.updated_at.to_rfc3339(),
+                        has_in_progress_attempt: Some(task.has_in_progress_attempt),
+                        has_merged_attempt: Some(task.has_merged_attempt),
+                        last_attempt_failed: Some(task.last_attempt_failed),
+                    })
+                    .collect();
+
+                let count = task_summaries.len();
+                let response = ListTasksResponse {
+                    success: true,
+                    tasks: task_summaries,
+                    count,
+                    project_id: project_id.clone().unwrap_or_else(|| project_uuid_val.to_string()),
+                    project_name: Some(project.name),
+                    applied_filters: ListTasksFilters {
+                        status: status.clone(),
+                        limit: task_limit,
+                    },
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response)
+                        .unwrap_or_else(|_| "Failed to serialize tasks".to_string()),
+                )]))
+            }
+            Err(e) => {
+                let error_response = serde_json::json!({
+                    "success": false,
+                    "error": "Failed to retrieve tasks",
+                    "details": e.to_string(),
+                    "project_id": project_id
+                });
+                Ok(CallToolResult::error(vec![Content::text(
+                    serde_json::to_string_pretty(&error_response)
+                        .unwrap_or_else(|_| "Database error".to_string()),
+                )]))
+            }
+        }
+    }
+}
+
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
@@ -845,6 +1271,23 @@ impl ServerHandler for TaskServer {
                 version: "1.0.0".to_string(),
             },
             instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
+        }
+    }
+}
+
+#[tool_handler]
+impl ServerHandler for AuthenticatedTaskServer {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo {
+            protocol_version: ProtocolVersion::V_2025_03_26,
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .build(),
+            server_info: Implementation {
+                name: "automagik-forge-authenticated".to_string(),
+                version: "1.0.0".to_string(),
+            },
+            instructions: Some("An authenticated task and project management server with OAuth 2.1 support. All operations are attributed to the authenticated GitHub user. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. Authentication is handled automatically via OAuth Bearer tokens.".to_string()),
         }
     }
 }

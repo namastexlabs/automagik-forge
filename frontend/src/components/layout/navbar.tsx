@@ -6,11 +6,15 @@ import {
   BookOpen,
   Server,
   MessageCircleQuestion,
+  Github,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { UserMenu } from '@/components/ui/user-menu';
+import { useAuth } from '@/components/auth-provider';
 
 export function Navbar() {
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
 
   return (
     <div className="border-b">
@@ -78,6 +82,14 @@ export function Navbar() {
                 Support
               </a>
             </Button>
+            {isAuthenticated && user ? (
+              <UserMenu user={user} />
+            ) : (
+              <Button variant="ghost" size="sm">
+                <Github className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </div>

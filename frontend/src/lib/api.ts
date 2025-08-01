@@ -1,6 +1,8 @@
 // Import all necessary types from shared types
 import {
+  AuthResponse,
   BranchStatus,
+  CollaborationEvent,
   Config,
   CreateFollowUpAttempt,
   CreateProject,
@@ -14,23 +16,31 @@ import {
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
+  PresenceStatus,
   ProcessLogsResponse,
   Project,
   ProjectWithBranch,
+  ProjectWithCreator,
   Task,
   TaskAttempt,
   TaskAttemptState,
   TaskTemplate,
   TaskWithAttemptStatus,
+  TaskWithUsers,
   UpdateProject,
   UpdateTask,
   UpdateTaskTemplate,
+  User,
+  UserInfoResponse,
+  UserPresence,
   WorktreeDiff,
 } from 'shared/types';
 
 export const makeRequest = async (url: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('auth_token');
   const headers = {
     'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
 
@@ -117,9 +127,9 @@ const handleApiResponse = async <T>(response: Response): Promise<T> => {
 
 // Project Management APIs
 export const projectsApi = {
-  getAll: async (): Promise<Project[]> => {
+  getAll: async (): Promise<ProjectWithCreator[]> => {
     const response = await makeRequest('/api/projects');
-    return handleApiResponse<Project[]>(response);
+    return handleApiResponse<ProjectWithCreator[]>(response);
   },
 
   getById: async (id: string): Promise<Project> => {
@@ -179,11 +189,14 @@ export const projectsApi = {
   },
 };
 
+// Combined type until backend provides unified type
+export type TaskWithUsersAndAttemptStatus = TaskWithUsers & Pick<TaskWithAttemptStatus, 'has_in_progress_attempt' | 'has_merged_attempt' | 'last_attempt_failed' | 'latest_attempt_executor'>;
+
 // Task Management APIs
 export const tasksApi = {
-  getAll: async (projectId: string): Promise<TaskWithAttemptStatus[]> => {
+  getAll: async (projectId: string): Promise<TaskWithUsersAndAttemptStatus[]> => {
     const response = await makeRequest(`/api/projects/${projectId}/tasks`);
-    return handleApiResponse<TaskWithAttemptStatus[]>(response);
+    return handleApiResponse<TaskWithUsersAndAttemptStatus[]>(response);
   },
 
   getById: async (projectId: string, taskId: string): Promise<Task> => {
@@ -204,7 +217,7 @@ export const tasksApi = {
   createAndStart: async (
     projectId: string,
     data: CreateTaskAndStart
-  ): Promise<TaskWithAttemptStatus> => {
+  ): Promise<TaskWithUsersAndAttemptStatus> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/tasks/create-and-start`,
       {
@@ -212,7 +225,7 @@ export const tasksApi = {
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<TaskWithAttemptStatus>(response);
+    return handleApiResponse<TaskWithUsersAndAttemptStatus>(response);
   },
 
   update: async (
@@ -626,5 +639,76 @@ export const mcpServersApi = {
         response
       );
     }
+  },
+};
+
+// Authentication APIs
+export const authApi = {
+  startGitHubAuth: async (): Promise<DeviceStartResponse> => {
+    const response = await makeRequest('/api/auth/github/device/start', {
+      method: 'POST',
+    });
+    return handleApiResponse<DeviceStartResponse>(response);
+  },
+  
+  pollGitHubAuth: async (device_code: string): Promise<AuthResponse> => {
+    const response = await makeRequest('/api/auth/github/device/poll', {
+      method: 'POST',
+      body: JSON.stringify({ device_code }),
+    });
+    return handleApiResponse<AuthResponse>(response);
+  },
+  
+  getCurrentUser: async (): Promise<UserInfoResponse> => {
+    const response = await makeRequest('/api/auth/me');
+    return handleApiResponse<UserInfoResponse>(response);
+  },
+  
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/auth/logout', {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+  
+  getUsers: async (): Promise<User[]> => {
+    const response = await makeRequest('/api/auth/users');
+    return handleApiResponse<User[]>(response);
+  },
+};
+
+// Collaboration APIs
+export const collaborationApi = {
+  // Get current presence data for a project
+  getCurrentPresence: async (projectId: string): Promise<UserPresence[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/presence`);
+    return handleApiResponse<UserPresence[]>(response);
+  },
+
+  // Update user presence status for a project
+  updatePresence: async (projectId: string, status: PresenceStatus): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${projectId}/presence`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Get recent collaboration events for a project (for fallback/initial load)
+  getRecentEvents: async (projectId: string, limit: number = 50): Promise<CollaborationEvent[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/events?limit=${limit}`
+    );
+    return handleApiResponse<CollaborationEvent[]>(response);
+  },
+
+  // Create event source for real-time events (returns URL for EventSource)
+  getEventStreamUrl: (projectId: string): string => {
+    return `/api/projects/${projectId}/events/stream`;
+  },
+
+  // Create event source for presence updates (returns URL for EventSource)
+  getPresenceStreamUrl: (projectId: string): string => {
+    return `/api/projects/${projectId}/presence/stream`;
   },
 };

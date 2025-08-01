@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
+    auth::UserContext,
     execution_monitor,
     models::{
         project::Project,
@@ -32,7 +33,10 @@ use crate::{
 pub async fn get_project_tasks(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, StatusCode> {
+    tracing::debug!("User {} requesting tasks for project {}", user_context.user.username, project.id);
+    
     match Task::find_by_project_id_with_attempt_status(&app_state.db_pool, project.id).await {
         Ok(tasks) => Ok(ResponseJson(ApiResponse::success(tasks))),
         Err(e) => {
@@ -80,17 +84,24 @@ pub async fn get_task(
 pub async fn create_task(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(mut payload): Json<CreateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
     let id = Uuid::new_v4();
 
     // Ensure the project_id in the payload matches the project from middleware
     payload.project_id = project.id;
+    
+    // Set the created_by field from the authenticated user if not already set
+    if payload.created_by.is_none() {
+        payload.created_by = Some(user_context.user.id);
+    }
 
     tracing::debug!(
-        "Creating task '{}' in project {}",
+        "Creating task '{}' in project {} by user {}",
         payload.title,
-        project.id
+        project.id,
+        user_context.user.username
     );
 
     match Task::create(&app_state.db_pool, &payload, id).await {
@@ -107,6 +118,11 @@ pub async fn create_task(
                 )
                 .await;
 
+            // Broadcast real-time task creation event
+            if let Err(e) = app_state.collaboration.broadcast_task_created(&task, &user_context.user).await {
+                tracing::warn!("Failed to broadcast task creation event: {}", e);
+            }
+
             Ok(ResponseJson(ApiResponse::success(task)))
         }
         Err(e) => {
@@ -119,17 +135,24 @@ pub async fn create_task(
 pub async fn create_task_and_start(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(mut payload): Json<CreateTaskAndStart>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
     let task_id = Uuid::new_v4();
 
     // Ensure the project_id in the payload matches the project from middleware
     payload.project_id = project.id;
+    
+    // Set the created_by field from the authenticated user if not already set
+    if payload.created_by.is_none() {
+        payload.created_by = Some(user_context.user.id);
+    }
 
     tracing::debug!(
-        "Creating and starting task '{}' in project {}",
+        "Creating and starting task '{}' in project {} by user {}",
         payload.title,
-        project.id
+        project.id,
+        user_context.user.username
     );
 
     // Create the task first
@@ -139,6 +162,8 @@ pub async fn create_task_and_start(
         description: payload.description.clone(),
         wish_id: payload.wish_id.clone(),
         parent_task_attempt: payload.parent_task_attempt,
+        created_by: payload.created_by,
+        assigned_to: payload.assigned_to,
     };
     let task = match Task::create(&app_state.db_pool, &create_task_payload, task_id).await {
         Ok(task) => task,
@@ -153,6 +178,7 @@ pub async fn create_task_and_start(
     let attempt_payload = CreateTaskAttempt {
         executor: executor_string.clone(),
         base_branch: None, // Not supported in task creation endpoint, only in task attempts
+        created_by: payload.created_by,
     };
 
     match TaskAttempt::create(&app_state.db_pool, &attempt_payload, task_id).await {
@@ -178,6 +204,16 @@ pub async fn create_task_and_start(
                     })),
                 )
                 .await;
+
+            // Broadcast real-time task creation event
+            if let Err(e) = app_state.collaboration.broadcast_task_created(&task, &user_context.user).await {
+                tracing::warn!("Failed to broadcast task creation event: {}", e);
+            }
+
+            // Broadcast real-time task attempt creation event
+            if let Err(e) = app_state.collaboration.broadcast_task_attempt_created(&attempt, &task, &user_context.user).await {
+                tracing::warn!("Failed to broadcast task attempt creation event: {}", e);
+            }
 
             // Start execution asynchronously (don't block the response)
             let app_state_clone = app_state.clone();
@@ -229,16 +265,71 @@ pub async fn update_task(
     Extension(project): Extension<Project>,
     Extension(existing_task): Extension<Task>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, StatusCode> {
-    // Use existing values if not provided in update
-    let title = payload.title.unwrap_or(existing_task.title);
-    let description = payload.description.or(existing_task.description);
-    let status = payload.status.unwrap_or(existing_task.status);
-    let wish_id = payload.wish_id.unwrap_or(existing_task.wish_id);
-    let parent_task_attempt = payload
-        .parent_task_attempt
-        .or(existing_task.parent_task_attempt);
+    tracing::debug!(
+        "User {} updating task {} in project {}", 
+        user_context.user.username, 
+        existing_task.id, 
+        project.id
+    );
+    
+    // Track what fields are changing
+    let mut changes = Vec::new();
+    
+    // Use existing values if not provided in update, and track changes
+    let title = if let Some(new_title) = &payload.title {
+        if new_title != &existing_task.title {
+            changes.push("title".to_string());
+        }
+        new_title.clone()
+    } else {
+        existing_task.title.clone()
+    };
+    
+    let description = if let Some(new_desc) = &payload.description {
+        if Some(new_desc) != existing_task.description.as_ref() {
+            changes.push("description".to_string());
+        }
+        Some(new_desc.clone())
+    } else {
+        existing_task.description.clone()
+    };
+    
+    let status = if let Some(new_status) = payload.status {
+        if new_status != existing_task.status {
+            changes.push("status".to_string());
+        }
+        new_status
+    } else {
+        existing_task.status
+    };
+    
+    let wish_id = if let Some(new_wish_id) = &payload.wish_id {
+        if new_wish_id != &existing_task.wish_id {
+            changes.push("wish_id".to_string());
+        }
+        new_wish_id.clone()
+    } else {
+        existing_task.wish_id.clone()
+    };
+    
+    let parent_task_attempt = if payload.parent_task_attempt != existing_task.parent_task_attempt {
+        if payload.parent_task_attempt.is_some() {
+            changes.push("parent_task_attempt".to_string());
+        }
+        payload.parent_task_attempt.or(existing_task.parent_task_attempt)
+    } else {
+        existing_task.parent_task_attempt
+    };
+    
+    let assigned_to = if payload.assigned_to != existing_task.assigned_to {
+        changes.push("assigned_to".to_string());
+        payload.assigned_to.or(existing_task.assigned_to)
+    } else {
+        existing_task.assigned_to
+    };
 
     match Task::update(
         &app_state.db_pool,
@@ -249,10 +340,20 @@ pub async fn update_task(
         status,
         wish_id,
         parent_task_attempt,
+        assigned_to,
     )
     .await
     {
-        Ok(task) => Ok(ResponseJson(ApiResponse::success(task))),
+        Ok(task) => {
+            // Broadcast real-time task update event if there were changes
+            if !changes.is_empty() {
+                if let Err(e) = app_state.collaboration.broadcast_task_updated(&task, &user_context.user, changes).await {
+                    tracing::warn!("Failed to broadcast task update event: {}", e);
+                }
+            }
+            
+            Ok(ResponseJson(ApiResponse::success(task)))
+        }
         Err(e) => {
             tracing::error!("Failed to update task: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -278,7 +379,14 @@ pub async fn delete_task(
     Extension(project): Extension<Project>,
     Extension(task): Extension<Task>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    tracing::debug!(
+        "User {} deleting task {} in project {}", 
+        user_context.user.username, 
+        task.id, 
+        project.id
+    );
     // Clean up all worktrees for this task before deletion
     if let Err(e) = execution_monitor::cleanup_task_worktrees(&app_state.db_pool, task.id).await {
         tracing::error!("Failed to cleanup worktrees for task {}: {}", task.id, e);

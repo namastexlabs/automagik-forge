@@ -19,18 +19,19 @@ import {
   FolderOpen,
   MoreHorizontal,
   Trash2,
+  User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '@/lib/api.ts';
-import { Project } from 'shared/types.ts';
+import { ProjectWithCreator } from 'shared/types.ts';
 import { useEffect, useRef } from 'react';
 
 type Props = {
-  project: Project;
+  project: ProjectWithCreator;
   isFocused: boolean;
   fetchProjects: () => void;
   setError: (error: string) => void;
-  setEditingProject: (project: Project) => void;
+  setEditingProject: (project: ProjectWithCreator) => void;
   setShowForm: (show: boolean) => void;
 };
 
@@ -69,7 +70,7 @@ function ProjectCard({
     }
   };
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = (project: ProjectWithCreator) => {
     setEditingProject(project);
     setShowForm(true);
   };
@@ -143,9 +144,19 @@ function ProjectCard({
             </DropdownMenu>
           </div>
         </div>
-        <CardDescription className="flex items-center">
-          <Calendar className="mr-1 h-3 w-3" />
-          Created {new Date(project.created_at).toLocaleDateString()}
+        <CardDescription className="space-y-1">
+          <div className="flex items-center">
+            <Calendar className="mr-1 h-3 w-3" />
+            Created {new Date(project.created_at).toLocaleDateString()}
+          </div>
+          {project.creator_username && (
+            <div className="flex items-center">
+              <User className="mr-1 h-3 w-3" />
+              <span>
+                by {project.creator_display_name || project.creator_username}
+              </span>
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
     </Card>

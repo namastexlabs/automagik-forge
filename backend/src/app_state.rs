@@ -5,7 +5,7 @@ use nix::{sys::signal::Signal, unistd::Pid};
 use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
-use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService};
+use crate::services::{generate_user_id, AnalyticsConfig, AnalyticsService, CollaborationService};
 
 #[derive(Debug)]
 pub enum ExecutionType {
@@ -28,6 +28,7 @@ pub struct AppState {
     pub db_pool: sqlx::SqlitePool,
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
+    pub collaboration: CollaborationService,
     user_id: String,
 }
 
@@ -45,11 +46,15 @@ impl AppState {
         let analytics_config = AnalyticsConfig::new(user_enabled);
         let analytics = Arc::new(TokioRwLock::new(AnalyticsService::new(analytics_config)));
 
+        // Initialize collaboration service
+        let collaboration = CollaborationService::new();
+
         Self {
             running_executions: Arc::new(Mutex::new(HashMap::new())),
             db_pool,
             config,
             analytics,
+            collaboration,
             user_id: generate_user_id(),
         }
     }

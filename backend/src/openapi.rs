@@ -36,6 +36,9 @@ use utoipa::OpenApi;
         crate::routes::auth::device_start,
         crate::routes::auth::device_poll,
         crate::routes::auth::github_check_token,
+        crate::routes::auth::get_current_user_info,
+        crate::routes::auth::logout,
+        crate::routes::auth::logout_all,
         // Config routes
         crate::routes::config::get_config,
         crate::routes::config::update_config,
@@ -72,6 +75,15 @@ use utoipa::OpenApi;
             crate::executor::ActionType,
             // Auth schemas
             crate::routes::auth::DeviceStartResponse,
+            crate::routes::auth::AuthResponse,
+            crate::routes::auth::UserInfoResponse,
+            crate::models::user::User,
+            crate::models::user::CreateUser,
+            crate::models::user::UpdateUser,
+            crate::models::user_session::UserSession,
+            crate::models::user_session::SessionType,
+            crate::models::user_session::CreateUserSession,
+            crate::models::user_session::UpdateUserSession,
             // Config schemas
             crate::routes::config::ConfigConstants,
             // Filesystem schemas

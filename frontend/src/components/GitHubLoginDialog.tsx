@@ -8,10 +8,10 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { Button } from './ui/button';
-import { useConfig } from './config-provider';
+import { useAuth } from './auth-provider';
 import { Check, Clipboard, Github } from 'lucide-react';
 import { Loader } from './ui/loader';
-import { githubAuthApi } from '../lib/api';
+import { authApi } from '../lib/api';
 import { DeviceStartResponse } from 'shared/types.ts';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
@@ -22,7 +22,7 @@ export function GitHubLoginDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { config, loading, githubTokenInvalid } = useConfig();
+  const { user, isAuthenticated, login, isLoading } = useAuth();
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceState, setDeviceState] = useState<null | DeviceStartResponse>(
@@ -31,16 +31,12 @@ export function GitHubLoginDialog({
   const [polling, setPolling] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const isAuthenticated =
-    !!(config?.github?.username && config?.github?.token) &&
-    !githubTokenInvalid;
-
   const handleLogin = async () => {
     setFetching(true);
     setError(null);
     setDeviceState(null);
     try {
-      const data = await githubAuthApi.start();
+      const data = await authApi.startGitHubAuth();
       setDeviceState(data);
       setPolling(true);
     } catch (e: any) {
@@ -57,7 +53,9 @@ export function GitHubLoginDialog({
     if (polling && deviceState) {
       const poll = async () => {
         try {
-          await githubAuthApi.poll(deviceState.device_code);
+          const authResponse = await authApi.pollGitHubAuth(deviceState.device_code);
+          // Login successful, store token and user info
+          login(authResponse.access_token, authResponse.user, authResponse.session);
           setPolling(false);
           setDeviceState(null);
           setError(null);
@@ -135,7 +133,7 @@ export function GitHubLoginDialog({
             directly from Automagik Forge.
           </DialogDescription>
         </DialogHeader>
-        {loading ? (
+        {isLoading ? (
           <Loader message="Loading…" size={32} className="py-8" />
         ) : isAuthenticated ? (
           <div className="space-y-4 py-3">
@@ -149,7 +147,7 @@ export function GitHubLoginDialog({
                   Successfully connected!
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  You are signed in as <b>{config?.github?.username ?? ''}</b>
+                  You are signed in as <b>{user?.username ?? ''}</b>
                 </div>
               </CardContent>
             </Card>

@@ -17,6 +17,7 @@ use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use automagik_forge::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
+mod auth;
 mod execution_monitor;
 mod executor;
 mod executors;
@@ -35,7 +36,7 @@ use middleware::{
 };
 use models::{ApiResponse, Config};
 use routes::{
-    auth, config, filesystem, health, projects, stream, task_attempts, task_templates, tasks,
+    auth as routes_auth, collaboration, config, filesystem, health, oauth, projects, stream, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 use utoipa::OpenApi;
@@ -211,22 +212,30 @@ fn main() -> anyhow::Result<()> {
             // Public routes (no auth required)
             let public_routes = Router::new()
                 .route("/api/health", get(health::health_check))
-                .route("/api/echo", post(echo_handler));
+                .route("/api/echo", post(echo_handler))
+                .route("/api/auth/github/device/start", post(routes_auth::device_start))
+                .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
+                .merge(oauth::oauth_router());
 
-            // Create routers with different middleware layers
-            let base_routes = Router::new()
+            // Protected routes (require authentication)
+            let protected_routes = Router::new()
                 .merge(stream::stream_router())
+                .merge(collaboration::collaboration_router())
                 .merge(filesystem::filesystem_router())
                 .merge(config::config_router())
-                .merge(auth::auth_router())
+                .route("/auth/github/check", get(routes_auth::github_check_token))
+                .route("/auth/me", get(routes_auth::get_current_user_info))
+                .route("/auth/logout", post(routes_auth::logout))
+                .route("/auth/logout-all", post(routes_auth::logout_all))
                 .route("/sounds/:filename", get(serve_sound_file))
                 .merge(
                     Router::new()
                         .route("/execution-processes/:process_id", get(task_attempts::get_execution_process))
                         .route_layer(from_fn_with_state(app_state.clone(), load_execution_process_simple_middleware))
-                );
+                )
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
-            // Template routes with task template middleware applied selectively
+            // Template routes with task template middleware applied selectively (protected)
             let template_routes = Router::new()
                 .route("/templates", get(task_templates::list_templates).post(task_templates::create_template))
                 .route("/templates/global", get(task_templates::list_global_templates))
@@ -243,39 +252,43 @@ fn main() -> anyhow::Result<()> {
                                 .delete(task_templates::delete_template),
                         )
                         .route_layer(from_fn_with_state(app_state.clone(), load_task_template_middleware))
-                );
+                )
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
-            // Project routes with project middleware
+            // Project routes with project middleware (protected)
             let project_routes = Router::new()
                 .merge(projects::projects_base_router())
                 .merge(projects::projects_with_id_router()
-                    .layer(from_fn_with_state(app_state.clone(), load_project_middleware)));
+                    .layer(from_fn_with_state(app_state.clone(), load_project_middleware)))
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
-            // Task routes with appropriate middleware
+            // Task routes with appropriate middleware (protected)
             let task_routes = Router::new()
                 .merge(tasks::tasks_project_router()
                     .layer(from_fn_with_state(app_state.clone(), load_project_middleware)))
                 .merge(tasks::tasks_with_id_router()
-                    .layer(from_fn_with_state(app_state.clone(), load_task_middleware)));
+                    .layer(from_fn_with_state(app_state.clone(), load_task_middleware)))
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
-            // Task attempt routes with appropriate middleware
+            // Task attempt routes with appropriate middleware (protected)
             let task_attempt_routes = Router::new()
                 .merge(task_attempts::task_attempts_list_router(app_state.clone())
                     .layer(from_fn_with_state(app_state.clone(), load_task_middleware)))
                 .merge(task_attempts::task_attempts_with_id_router(app_state.clone())
-                    .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware)));
+                    .layer(from_fn_with_state(app_state.clone(), load_task_attempt_middleware)))
+                .layer(from_fn_with_state(app_state.clone(), crate::auth::auth_middleware));
 
-            // All routes (no auth required)
+            // All routes with authentication applied where needed
             let app_routes = Router::new()
                 .nest(
                     "/api",
                     Router::new()
-                        .merge(base_routes)
+                        .merge(protected_routes)
                         .merge(template_routes)
                         .merge(project_routes)
                         .merge(task_routes)
                         .merge(task_attempt_routes)
-                        .layer(from_fn_with_state(app_state.clone(), auth::sentry_user_context_middleware)),
+                        .layer(from_fn_with_state(app_state.clone(), routes_auth::sentry_user_context_middleware)),
                 );
 
             let app = Router::new()

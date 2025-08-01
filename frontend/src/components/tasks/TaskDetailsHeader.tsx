@@ -8,12 +8,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { TaskStatus } from 'shared/types';
+import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { TaskDetailsContext } from '@/components/context/taskDetailsContext.ts';
 
 interface TaskDetailsHeaderProps {
   onClose: () => void;
-  onEditTask?: (task: TaskWithAttemptStatus) => void;
+  onEditTask?: (task: TaskWithUsersAndAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
 }
 

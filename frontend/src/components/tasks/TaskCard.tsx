@@ -1,4 +1,4 @@
-import { KeyboardEvent, useCallback, useEffect, useRef } from 'react';
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,18 +8,26 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   CheckCircle,
   Edit,
   Loader2,
   MoreHorizontal,
   Trash2,
+  User,
   XCircle,
+  Activity,
+  Clock,
+  Wifi,
 } from 'lucide-react';
-import type { TaskWithAttemptStatus } from 'shared/types';
 import { is_planning_executor_type } from '@/lib/utils';
+import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
+import { useCollaboration } from '@/components/context/CollaborationProvider';
+import { PresenceStatus } from 'shared/types';
 
-type Task = TaskWithAttemptStatus;
+// Use the combined type from API
+type Task = TaskWithUsersAndAttemptStatus;
 
 interface TaskCardProps {
   task: Task;
@@ -43,12 +51,42 @@ export function TaskCard({
   tabIndex = -1,
 }: TaskCardProps) {
   const localRef = useRef<HTMLDivElement>(null);
+  const { currentPresence, lastEvent } = useCollaboration();
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false);
+  const [lastUpdateBy, setLastUpdateBy] = useState<string | null>(null);
+
   useEffect(() => {
     if (isFocused && localRef.current) {
       localRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       localRef.current.focus();
     }
   }, [isFocused]);
+
+  // Track recent updates to this specific task
+  useEffect(() => {
+    if (lastEvent && 
+        (lastEvent.event_type === 'task_updated' || 
+         lastEvent.event_type === 'task_assigned' ||
+         lastEvent.event_type === 'task_attempt_created' ||
+         lastEvent.event_type === 'task_attempt_approved') &&
+        lastEvent.data.task?.id === task.id) {
+      
+      setHasRecentUpdate(true);
+      setLastUpdateBy(lastEvent.user_info.display_name || lastEvent.user_info.username);
+
+      // Clear the recent update indicator after 10 seconds
+      const timeout = setTimeout(() => {
+        setHasRecentUpdate(false);
+        setLastUpdateBy(null);
+      }, 10000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [lastEvent, task.id]);
+
+  // Get presence info for assigned user
+  const assigneePresence = currentPresence.find(p => p.user_id === task.assigned_to);
+  const isAssigneeOnline = assigneePresence?.status === PresenceStatus.Online;
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -76,8 +114,19 @@ export function TaskCard({
       tabIndex={tabIndex}
       forwardedRef={localRef}
       onKeyDown={handleKeyDown}
+      className={hasRecentUpdate ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}
     >
       <div className="space-y-2">
+        {/* Recent update indicator */}
+        {hasRecentUpdate && lastUpdateBy && (
+          <div className="flex items-center space-x-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded text-xs animate-in fade-in-50 slide-in-from-top-1">
+            <Activity className="h-3 w-3 text-blue-500 animate-pulse" />
+            <span className="text-blue-700 dark:text-blue-300">
+              Recently updated by {lastUpdateBy}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-start justify-between">
           <div className="flex-1 pr-2">
             <div className="mb-1">
@@ -104,6 +153,13 @@ export function TaskCard({
             {/* Failed Indicator */}
             {task.last_attempt_failed && !task.has_merged_attempt && (
               <XCircle className="h-3 w-3 text-red-500" />
+            )}
+            {/* Assignee Online Indicator */}
+            {isAssigneeOnline && task.assigned_to && (
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <Wifi className="h-3 w-3 text-green-500" />
+              </div>
             )}
             {/* Actions Menu */}
             <div
@@ -148,6 +204,54 @@ export function TaskCard({
             </p>
           </div>
         )}
+        
+        {/* User Attribution */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+          <div className="flex items-center space-x-2">
+            {task.creator_username && (
+              <div className="flex items-center space-x-1">
+                <User className="h-3 w-3" />
+                <span>
+                  {task.creator_display_name || task.creator_username}
+                </span>
+              </div>
+            )}
+          </div>
+          {task.assignee_username && (
+            <div className="flex items-center space-x-1">
+              <span className="text-[10px] font-medium">ASSIGNED</span>
+              <div className="flex items-center space-x-1">
+                <div className="relative">
+                  <UserAvatar
+                    size="sm"
+                    className="w-4 h-4"
+                  />
+                  {/* Presence indicator for assignee */}
+                  {assigneePresence && (
+                    <div 
+                      className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${
+                        assigneePresence.status === PresenceStatus.Online 
+                          ? 'bg-green-500 animate-pulse' 
+                          : assigneePresence.status === PresenceStatus.Away
+                          ? 'bg-yellow-500'
+                          : 'bg-gray-400'
+                      }`}
+                    />
+                  )}
+                </div>
+                <span className="text-[10px]">
+                  {task.assignee_display_name || task.assignee_username}
+                </span>
+                {/* Online indicator text */}
+                {isAssigneeOnline && (
+                  <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">
+                    ONLINE
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </KanbanCard>
   );

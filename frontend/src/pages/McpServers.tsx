@@ -140,7 +140,7 @@ export function McpServers() {
       const existingConfig = mcpServers.trim() ? JSON.parse(mcpServers) : {};
 
       // Always use production MCP installation instructions
-      const vibeKanbanConfig =
+      const automagikForgeConfig =
         selectedMcpExecutor === 'sst-opencode'
           ? {
               type: 'local',
@@ -159,7 +159,7 @@ export function McpServers() {
           ...existingConfig,
           'amp.mcpServers': {
             ...(existingConfig['amp.mcpServers'] || {}),
-            automagik_forge: vibeKanbanConfig,
+            automagik_forge: automagikForgeConfig,
           },
         };
       } else if (selectedMcpExecutor === 'sst-opencode') {
@@ -167,7 +167,7 @@ export function McpServers() {
           ...existingConfig,
           mcp: {
             ...(existingConfig.mcp || {}),
-            automagik_forge: vibeKanbanConfig,
+            automagik_forge: automagikForgeConfig,
           },
         };
       } else {
@@ -175,7 +175,7 @@ export function McpServers() {
           ...existingConfig,
           mcpServers: {
             ...(existingConfig.mcpServers || {}),
-            automagik_forge: vibeKanbanConfig,
+            automagik_forge: automagikForgeConfig,
           },
         };
       }

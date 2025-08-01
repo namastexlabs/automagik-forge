@@ -12,11 +12,13 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
+    auth::UserContext,
     models::{
         project::{
-            CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, SearchMatchType,
+            CreateBranch, CreateProject, GitBranch, Project, ProjectWithBranch, ProjectWithCreator, SearchMatchType,
             SearchResult, UpdateProject,
         },
+        // user_preferences::UserPreferences,
         ApiResponse,
     },
 };
@@ -25,15 +27,19 @@ use crate::{
     get,
     path = "/api/projects",
     responses(
-        (status = 200, description = "List all projects", body = ApiResponse<Vec<Project>>),
+        (status = 200, description = "List all projects", body = ApiResponse<Vec<ProjectWithCreator>>),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
     tag = "projects"
 )]
 pub async fn get_projects(
     State(app_state): State<AppState>,
-) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, StatusCode> {
-    match Project::find_all(&app_state.db_pool).await {
+    Extension(user_context): Extension<UserContext>,
+) -> Result<ResponseJson<ApiResponse<Vec<ProjectWithCreator>>>, StatusCode> {
+    tracing::debug!("User {} requesting projects list", user_context.user.username);
+    
+    match Project::find_all_with_creators(&app_state.db_pool).await {
         Ok(projects) => Ok(ResponseJson(ApiResponse::success(projects))),
         Err(e) => {
             tracing::error!("Failed to fetch projects: {}", e);
@@ -123,17 +129,22 @@ pub async fn create_project_branch(
     responses(
         (status = 200, description = "Project created successfully", body = ApiResponse<Project>),
         (status = 400, description = "Invalid input"),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
     tag = "projects"
 )]
 pub async fn create_project(
     State(app_state): State<AppState>,
-    Json(payload): Json<CreateProject>,
+    Extension(user_context): Extension<UserContext>,
+    Json(mut payload): Json<CreateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
     let id = Uuid::new_v4();
+    
+    // Set the created_by field from the authenticated user
+    payload.created_by = Some(user_context.user.id);
 
-    tracing::debug!("Creating project '{}'", payload.name);
+    tracing::debug!("Creating project '{}' by user {}", payload.name, user_context.user.username);
 
     // Check if git repo path is already used by another project
     match Project::find_by_git_repo_path(&app_state.db_pool, &payload.git_repo_path).await {
@@ -257,8 +268,11 @@ pub async fn create_project(
 pub async fn update_project(
     Extension(existing_project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(payload): Json<UpdateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
+    tracing::debug!("User {} updating project {}", user_context.user.username, existing_project.id);
+    
     // If git_repo_path is being changed, check if the new path is already used by another project
     if let Some(new_git_repo_path) = &payload.git_repo_path {
         if new_git_repo_path != &existing_project.git_repo_path {
@@ -296,8 +310,38 @@ pub async fn update_project(
         cleanup_script,
     } = payload;
 
-    let name = name.unwrap_or(existing_project.name);
-    let git_repo_path = git_repo_path.unwrap_or(existing_project.git_repo_path);
+    // Track what fields are changing
+    let mut changes = Vec::new();
+    
+    let name = if let Some(new_name) = name {
+        if new_name != existing_project.name {
+            changes.push("name".to_string());
+        }
+        new_name
+    } else {
+        existing_project.name.clone()
+    };
+    
+    let git_repo_path = if let Some(new_path) = git_repo_path {
+        if new_path != existing_project.git_repo_path {
+            changes.push("git_repo_path".to_string());
+        }
+        new_path
+    } else {
+        existing_project.git_repo_path.clone()
+    };
+    
+    if setup_script != existing_project.setup_script {
+        changes.push("setup_script".to_string());
+    }
+    
+    if dev_script != existing_project.dev_script {
+        changes.push("dev_script".to_string());
+    }
+    
+    if cleanup_script != existing_project.cleanup_script {
+        changes.push("cleanup_script".to_string());
+    }
 
     match Project::update(
         &app_state.db_pool,
@@ -310,7 +354,16 @@ pub async fn update_project(
     )
     .await
     {
-        Ok(project) => Ok(ResponseJson(ApiResponse::success(project))),
+        Ok(project) => {
+            // Broadcast real-time project update event if there were changes
+            if !changes.is_empty() {
+                if let Err(e) = app_state.collaboration.broadcast_project_updated(&project, &user_context.user, changes).await {
+                    tracing::warn!("Failed to broadcast project update event: {}", e);
+                }
+            }
+            
+            Ok(ResponseJson(ApiResponse::success(project)))
+        }
         Err(e) => {
             tracing::error!("Failed to update project: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -334,7 +387,9 @@ pub async fn update_project(
 pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    tracing::debug!("User {} deleting project {}", user_context.user.username, project.id);
     match Project::delete(&app_state.db_pool, project.id).await {
         Ok(rows_affected) => {
             if rows_affected == 0 {
@@ -355,38 +410,48 @@ pub struct OpenEditorRequest {
     editor_type: Option<String>,
 }
 
+/*
 pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    // Get editor command from config or override
-    let editor_command = {
-        let config_guard = app_state.get_config().read().await;
-        if let Some(ref request) = payload {
-            if let Some(ref editor_type) = request.editor_type {
-                // Create a temporary editor config with the override
-                use crate::models::config::{EditorConfig, EditorType};
-                let override_editor_type = match editor_type.as_str() {
-                    "vscode" => EditorType::VSCode,
-                    "cursor" => EditorType::Cursor,
-                    "windsurf" => EditorType::Windsurf,
-                    "intellij" => EditorType::IntelliJ,
-                    "zed" => EditorType::Zed,
-                    "custom" => EditorType::Custom,
-                    _ => config_guard.editor.editor_type.clone(),
-                };
-                let temp_config = EditorConfig {
-                    editor_type: override_editor_type,
-                    custom_command: config_guard.editor.custom_command.clone(),
-                };
-                temp_config.get_command()
-            } else {
-                config_guard.editor.get_command()
-            }
-        } else {
-            config_guard.editor.get_command()
+    tracing::debug!("User {} opening project {} in editor", user_context.user.username, project.id);
+    
+    // Get user preferences for editor settings
+    let user_preferences = match UserPreferences::get_or_create_for_user(&app_state.db_pool, user_context.user.id).await {
+        Ok(prefs) => prefs,
+        Err(e) => {
+            tracing::error!("Failed to get user preferences: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
+    };
+    
+    // Get editor command from user preferences or override
+    let editor_command = if let Some(ref request) = payload {
+        if let Some(ref editor_type) = request.editor_type {
+            // Create a temporary editor config with the override
+            use crate::models::config::{EditorConfig, EditorType};
+            let override_editor_type = match editor_type.as_str() {
+                "vscode" => EditorType::VSCode,
+                "cursor" => EditorType::Cursor,
+                "windsurf" => EditorType::Windsurf,
+                "intellij" => EditorType::IntelliJ,
+                "zed" => EditorType::Zed,
+                "custom" => EditorType::Custom,
+                _ => user_preferences.editor_type.clone(),
+            };
+            let temp_config = EditorConfig {
+                editor_type: override_editor_type,
+                custom_command: user_preferences.editor_custom_command.clone(),
+            };
+            temp_config.get_command()
+        } else {
+            user_preferences.get_editor_command()
+        }
+    } else {
+        user_preferences.get_editor_command()
     };
 
     // Open editor in the project directory
@@ -417,6 +482,7 @@ pub async fn open_project_in_editor(
         }
     }
 }
+*/
 
 pub async fn search_project_files(
     Extension(project): Extension<Project>,
@@ -558,5 +624,5 @@ pub fn projects_with_id_router() -> Router<AppState> {
             get(get_project_branches).post(create_project_branch),
         )
         .route("/projects/:id/search", get(search_project_files))
-        .route("/projects/:id/open-editor", post(open_project_in_editor))
+        // .route("/projects/:id/open-editor", post(open_project_in_editor))
 }

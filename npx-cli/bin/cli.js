@@ -219,7 +219,7 @@ function extractAndRun(baseName, launch) {
 
 if (isMcpMode || isMcpSseMode) {
   extractAndRun("automagik-forge-mcp", (bin) => {
-    const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : [];
+    const mcpArgs = isMcpSseMode ? ["--mcp-sse"] : ["--mcp"];
     console.log(`Starting MCP server with ${isMcpSseMode ? 'SSE + STDIO' : 'STDIO'} transport...`);
     
     // Environment variables are already loaded from .env file

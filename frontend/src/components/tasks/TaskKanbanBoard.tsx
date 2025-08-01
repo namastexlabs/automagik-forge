@@ -7,14 +7,21 @@ import {
   KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
-import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { TaskStatus } from 'shared/types';
+import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   useKeyboardShortcuts,
   useKanbanKeyboardNavigation,
 } from '@/lib/keyboard-shortcuts.ts';
+import { useRealtimeTaskSync } from '@/hooks/useRealtimeTaskSync';
+import { useCollaboration } from '@/components/context/CollaborationProvider';
+import { Badge } from '@/components/ui/badge';
+import { OnlineUserBadge, ConnectionStatus } from '@/components/collaboration/UserPresence';
+import { RecentChangeIndicator } from '@/components/collaboration/ActivityIndicator';
+import { Activity, Users, Wifi } from 'lucide-react';
 
-type Task = TaskWithAttemptStatus;
+type Task = TaskWithUsersAndAttemptStatus;
 
 interface TaskKanbanBoardProps {
   tasks: Task[];
@@ -23,6 +30,8 @@ interface TaskKanbanBoardProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onViewTaskDetails: (task: Task) => void;
+  onTasksUpdate: (tasks: Task[]) => void;
+  onOptimisticUpdate?: (tasks: Task[]) => void;
   isPanelOpen: boolean;
 }
 
@@ -57,6 +66,8 @@ function TaskKanbanBoard({
   onEditTask,
   onDeleteTask,
   onViewTaskDetails,
+  onTasksUpdate,
+  onOptimisticUpdate,
   isPanelOpen,
 }: TaskKanbanBoardProps) {
   const { projectId, taskId } = useParams<{
@@ -64,6 +75,17 @@ function TaskKanbanBoard({
     taskId?: string;
   }>();
   const navigate = useNavigate();
+  
+  // Real-time collaboration state
+  const { 
+    isConnected, 
+    isConnecting, 
+    connectionError, 
+    onlineUsers, 
+    lastEvent 
+  } = useCollaboration();
+  
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useKeyboardShortcuts({
     navigate,
@@ -74,6 +96,15 @@ function TaskKanbanBoard({
     taskId || null
   );
   const [focusedStatus, setFocusedStatus] = useState<TaskStatus | null>(null);
+
+  // Real-time task synchronization
+  useRealtimeTaskSync({
+    projectId: projectId!,
+    tasks,
+    onTasksUpdate,
+    onOptimisticUpdate,
+    onSyncError: setSyncError,
+  });
 
   // Memoize filtered tasks
   const filteredTasks = useMemo(() => {
@@ -149,31 +180,63 @@ function TaskKanbanBoard({
   });
 
   return (
-    <KanbanProvider onDragEnd={onDragEnd}>
-      {Object.entries(groupedTasks).map(([status, statusTasks]) => (
-        <KanbanBoard key={status} id={status as TaskStatus}>
-          <KanbanHeader
-            name={statusLabels[status as TaskStatus]}
-            color={statusBoardColors[status as TaskStatus]}
+    <div className="space-y-4">
+      {/* Collaboration Status Bar */}
+      <div className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
+        <div className="flex items-center space-x-4">
+          <ConnectionStatus 
+            isConnected={isConnected}
+            isConnecting={isConnecting}
+            error={connectionError}
           />
-          <KanbanCards>
-            {statusTasks.map((task, index) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                index={index}
-                status={status}
-                onEdit={onEditTask}
-                onDelete={onDeleteTask}
-                onViewDetails={onViewTaskDetails}
-                isFocused={focusedTaskId === task.id}
-                tabIndex={focusedTaskId === task.id ? 0 : -1}
-              />
-            ))}
-          </KanbanCards>
-        </KanbanBoard>
-      ))}
-    </KanbanProvider>
+          <OnlineUserBadge onlineCount={onlineUsers.length} />
+          {onlineUsers.length > 0 && (
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              <Users className="h-3 w-3" />
+              <span>
+                {onlineUsers.slice(0, 3).map(user => user.display_name || user.username).join(', ')}
+                {onlineUsers.length > 3 && ` +${onlineUsers.length - 3} more`}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          {syncError && (
+            <Badge variant="destructive" className="text-xs">
+              Sync Error: {syncError}
+            </Badge>
+          )}
+          <RecentChangeIndicator lastEvent={lastEvent} />
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      <KanbanProvider onDragEnd={onDragEnd}>
+        {Object.entries(groupedTasks).map(([status, statusTasks]) => (
+          <KanbanBoard key={status} id={status as TaskStatus}>
+            <KanbanHeader
+              name={statusLabels[status as TaskStatus]}
+              color={statusBoardColors[status as TaskStatus]}
+            />
+            <KanbanCards>
+              {statusTasks.map((task, index) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  status={status}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                  onViewDetails={onViewTaskDetails}
+                  isFocused={focusedTaskId === task.id}
+                  tabIndex={focusedTaskId === task.id ? 0 : -1}
+                />
+              ))}
+            </KanbanCards>
+          </KanbanBoard>
+        ))}
+      </KanbanProvider>
+    </div>
   );
 }
 

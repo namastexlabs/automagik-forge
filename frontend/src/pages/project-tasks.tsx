@@ -3,13 +3,18 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { FolderOpen, Plus, Settings, LibraryBig, Globe2 } from 'lucide-react';
+import { FolderOpen, Plus, Settings, LibraryBig, Globe2, Users, Activity } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { projectsApi, tasksApi, templatesApi, TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog';
 import { ProjectForm } from '@/components/projects/project-form';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
+import { useAuth } from '@/components/auth-provider';
+import { useCollaboration } from '@/components/context/CollaborationProvider';
+import { UserPresenceList, ConnectionStatus } from '@/components/collaboration/UserPresence';
+import { ActivityIndicator } from '@/components/collaboration/ActivityIndicator';
+import { NotificationSettings } from '@/components/collaboration/CollaborationNotifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +54,18 @@ export function ProjectTasks() {
     taskId?: string;
   }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { 
+    connect, 
+    disconnect, 
+    isConnected, 
+    isConnecting,
+    connectionError,
+    currentPresence,
+    events,
+    updatePresence
+  } = useCollaboration();
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<ProjectWithBranch | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +78,9 @@ export function ProjectTasks() {
   const [selectedTemplate, setSelectedTemplate] = useState<TaskTemplate | null>(
     null
   );
+  
+  // Collaboration state
+  const [showCollaborationPanel, setShowCollaborationPanel] = useState(false);
 
   // Template management state
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);

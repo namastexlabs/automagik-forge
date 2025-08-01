@@ -6,7 +6,7 @@ import {
   getBackdropClasses,
   getTaskPanelClasses,
 } from '@/lib/responsive-config';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import DiffTab from '@/components/tasks/TaskDetails/DiffTab.tsx';
 import LogsTab from '@/components/tasks/TaskDetails/LogsTab.tsx';
 import RelatedTasksTab from '@/components/tasks/TaskDetails/RelatedTasksTab.tsx';
@@ -17,11 +17,11 @@ import CollapsibleToolbar from '@/components/tasks/TaskDetails/CollapsibleToolba
 import TaskDetailsProvider from '../context/TaskDetailsContextProvider.tsx';
 
 interface TaskDetailsPanelProps {
-  task: TaskWithAttemptStatus | null;
+  task: TaskWithUsersAndAttemptStatus | null;
   projectHasDevScript?: boolean;
   projectId: string;
   onClose: () => void;
-  onEditTask?: (task: TaskWithAttemptStatus) => void;
+  onEditTask?: (task: TaskWithUsersAndAttemptStatus) => void;
   onDeleteTask?: (taskId: string) => void;
   isDialogOpen?: boolean;
 }

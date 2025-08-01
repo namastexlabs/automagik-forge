@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "genie-memory": {
-      "type": "sse",
-      "url": "http://localhost:8765/mcp/openmemory/sse/namastex"
-    },
     "ask-repo-agent": {
       "type": "sse",
       "url": "https://mcp.deepwiki.com/sse"
@@ -11,14 +7,6 @@
     "search-repo-docs": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
-    },
-    "wait": {
-      "command": "uvx",
-      "args": [
-        "automagik-tools@0.8.15",
-        "tool",
-        "wait"
-      ]
     },
     "whatsapp_notifications": {
       "command": "uvx",
@@ -43,7 +31,7 @@
     },
     "automagik-forge": {
       "command": "npx",
-      "args": ["-y", "automagik-forge", "--mcp"]
+      "args": ["-y", "automagik-forge@0.2.6", "--mcp"]
     }
   }
 }

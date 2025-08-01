@@ -4,13 +4,13 @@ import type {
   Task,
   TaskAttempt,
   TaskAttemptState,
-  TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
+import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { AttemptData } from '@/lib/types.ts';
 
 export interface TaskDetailsContextValue {
-  task: TaskWithAttemptStatus;
+  task: TaskWithUsersAndAttemptStatus;
   projectId: string;
   handleOpenInEditor: (editorType?: EditorType) => Promise<void>;
   projectHasDevScript?: boolean;

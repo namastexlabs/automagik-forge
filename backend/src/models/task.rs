@@ -27,6 +27,8 @@ pub struct Task {
     pub status: TaskStatus,
     pub wish_id: String, // Required: Grouping field for task organization
     pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt
+    pub created_by: Option<Uuid>, // User who created this task
+    pub assigned_to: Option<Uuid>, // User assigned to this task
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -41,12 +43,34 @@ pub struct TaskWithAttemptStatus {
     pub status: TaskStatus,
     pub wish_id: String,
     pub parent_task_attempt: Option<Uuid>,
+    pub created_by: Option<Uuid>,
+    pub assigned_to: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
     pub latest_attempt_executor: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
+pub struct TaskWithUsers {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: TaskStatus,
+    pub wish_id: String,
+    pub parent_task_attempt: Option<Uuid>,
+    pub created_by: Option<Uuid>,
+    pub assigned_to: Option<Uuid>,
+    pub creator_username: Option<String>,
+    pub creator_display_name: Option<String>,
+    pub assignee_username: Option<String>,
+    pub assignee_display_name: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
@@ -57,6 +81,8 @@ pub struct CreateTask {
     pub description: Option<String>,
     pub wish_id: String, // Required: Wish grouping identifier
     pub parent_task_attempt: Option<Uuid>,
+    pub created_by: Option<Uuid>, // User creating this task
+    pub assigned_to: Option<Uuid>, // User assigned to this task
 }
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
@@ -67,6 +93,8 @@ pub struct CreateTaskAndStart {
     pub description: Option<String>,
     pub wish_id: String, // Required: Wish grouping identifier
     pub parent_task_attempt: Option<Uuid>,
+    pub created_by: Option<Uuid>,
+    pub assigned_to: Option<Uuid>,
     pub executor: Option<crate::executor::ExecutorConfig>,
 }
 
@@ -78,6 +106,7 @@ pub struct UpdateTask {
     pub status: Option<TaskStatus>,
     pub wish_id: Option<String>, // Optional: Can reassign wish
     pub parent_task_attempt: Option<Uuid>,
+    pub assigned_to: Option<Uuid>, // Optional: Can reassign task
 }
 
 impl Task {
@@ -94,6 +123,8 @@ impl Task {
   t.status                        AS "status!: TaskStatus",
   t.wish_id,
   t.parent_task_attempt           AS "parent_task_attempt: Uuid",
+  t.created_by                    AS "created_by: Uuid",
+  t.assigned_to                   AS "assigned_to: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -153,6 +184,8 @@ ORDER BY t.created_at DESC"#,
                 status: rec.status,
                 wish_id: rec.wish_id,
                 parent_task_attempt: rec.parent_task_attempt,
+                created_by: rec.created_by,
+                assigned_to: rec.assigned_to,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
@@ -165,10 +198,59 @@ ORDER BY t.created_at DESC"#,
         Ok(tasks)
     }
 
+    pub async fn find_by_project_id_with_users(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<TaskWithUsers>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"SELECT 
+                t.id as "id!: Uuid", t.project_id as "project_id!: Uuid", t.title, t.description, 
+                t.status as "status!: TaskStatus", t.wish_id, 
+                t.parent_task_attempt as "parent_task_attempt: Uuid", 
+                t.created_by as "created_by: Uuid", t.assigned_to as "assigned_to: Uuid", 
+                t.created_at as "created_at!: DateTime<Utc>", t.updated_at as "updated_at!: DateTime<Utc>",
+                creator.username as creator_username,
+                creator.display_name as creator_display_name,
+                assignee.username as assignee_username,
+                assignee.display_name as assignee_display_name
+               FROM tasks t
+               LEFT JOIN users creator ON t.created_by = creator.id
+               LEFT JOIN users assignee ON t.assigned_to = assignee.id
+               WHERE t.project_id = $1
+               ORDER BY t.created_at DESC"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let tasks = records
+            .into_iter()
+            .map(|rec| TaskWithUsers {
+                id: rec.id,
+                project_id: rec.project_id,
+                title: rec.title,
+                description: rec.description,
+                status: rec.status,
+                wish_id: rec.wish_id,
+                parent_task_attempt: rec.parent_task_attempt,
+                created_by: rec.created_by,
+                assigned_to: rec.assigned_to,
+                creator_username: rec.creator_username,
+                creator_display_name: rec.creator_display_name,
+                assignee_username: rec.assignee_username,
+                assignee_display_name: rec.assignee_display_name,
+                created_at: rec.created_at,
+                updated_at: rec.updated_at,
+            })
+            .collect();
+
+        Ok(tasks)
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_by as "created_by: Uuid", assigned_to as "assigned_to: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks 
                WHERE id = $1"#,
             id
@@ -184,7 +266,7 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_by as "created_by: Uuid", assigned_to as "assigned_to: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks 
                WHERE id = $1 AND project_id = $2"#,
             id,
@@ -201,16 +283,18 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, wish_id, parent_task_attempt) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7) 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, wish_id, parent_task_attempt, created_by, assigned_to) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_by as "created_by: Uuid", assigned_to as "assigned_to: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             TaskStatus::Todo as TaskStatus,
             data.wish_id,
-            data.parent_task_attempt
+            data.parent_task_attempt,
+            data.created_by,
+            data.assigned_to
         )
         .fetch_one(pool)
         .await
@@ -225,21 +309,23 @@ ORDER BY t.created_at DESC"#,
         status: TaskStatus,
         wish_id: String,
         parent_task_attempt: Option<Uuid>,
+        assigned_to: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
         let status_value = status as TaskStatus;
         sqlx::query_as!(
             Task,
             r#"UPDATE tasks 
-               SET title = $3, description = $4, status = $5, wish_id = $6, parent_task_attempt = $7 
+               SET title = $3, description = $4, status = $5, wish_id = $6, parent_task_attempt = $7, assigned_to = $8 
                WHERE id = $1 AND project_id = $2 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", wish_id, parent_task_attempt as "parent_task_attempt: Uuid", created_by as "created_by: Uuid", assigned_to as "assigned_to: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
             description,
             status_value,
             wish_id,
-            parent_task_attempt
+            parent_task_attempt,
+            assigned_to
         )
         .fetch_one(pool)
         .await
@@ -297,7 +383,7 @@ ORDER BY t.created_at DESC"#,
         // Find both children and parent for this attempt
         sqlx::query_as!(
             Task,
-            r#"SELECT DISTINCT t.id as "id!: Uuid", t.project_id as "project_id!: Uuid", t.title, t.description, t.status as "status!: TaskStatus", t.wish_id, t.parent_task_attempt as "parent_task_attempt: Uuid", t.created_at as "created_at!: DateTime<Utc>", t.updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT DISTINCT t.id as "id!: Uuid", t.project_id as "project_id!: Uuid", t.title, t.description, t.status as "status!: TaskStatus", t.wish_id, t.parent_task_attempt as "parent_task_attempt: Uuid", t.created_by as "created_by: Uuid", t.assigned_to as "assigned_to: Uuid", t.created_at as "created_at!: DateTime<Utc>", t.updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks t
                WHERE (
                    -- Find children: tasks that have this attempt as parent

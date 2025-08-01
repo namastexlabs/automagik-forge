@@ -14,6 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
+    auth::UserContext,
     executor::{
         ActionType, ExecutorConfig, NormalizedConversation, NormalizedEntry, NormalizedEntryType,
     },
@@ -29,6 +30,7 @@ use crate::{
             BranchStatus, CreateFollowUpAttempt, CreatePrParams, CreateTaskAttempt, TaskAttempt,
             TaskAttemptState, WorktreeDiff,
         },
+        // user_preferences::UserPreferences,
         ApiResponse,
     },
 };
@@ -265,8 +267,19 @@ pub async fn create_task_attempt(
     Extension(_project): Extension<Project>,
     Extension(task): Extension<Task>,
     State(app_state): State<AppState>,
-    Json(payload): Json<CreateTaskAttempt>,
+    Extension(user_context): Extension<UserContext>,
+    Json(mut payload): Json<CreateTaskAttempt>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, StatusCode> {
+    // Set the created_by field from the authenticated user if not already set
+    if payload.created_by.is_none() {
+        payload.created_by = Some(user_context.user.id);
+    }
+    
+    tracing::debug!(
+        "User {} creating task attempt for task {}", 
+        user_context.user.username, 
+        task.id
+    );
     let executor_string = payload.executor.as_ref().map(|exec| exec.to_string());
 
     match TaskAttempt::create(&app_state.db_pool, &payload, task.id).await {
@@ -281,6 +294,11 @@ pub async fn create_task_attempt(
                     })),
                 )
                 .await;
+
+            // Broadcast real-time task attempt creation event
+            if let Err(e) = app_state.collaboration.broadcast_task_attempt_created(&attempt, &task, &user_context.user).await {
+                tracing::warn!("Failed to broadcast task attempt creation event: {}", e);
+            }
 
             // Start execution asynchronously (don't block the response)
             let app_state_clone = app_state.clone();
@@ -491,43 +509,52 @@ pub struct OpenEditorRequest {
     editor_type: Option<String>,
 }
 
+/*
 pub async fn open_task_attempt_in_editor(
     Extension(_project): Extension<Project>,
     Extension(_task): Extension<Task>,
     Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    tracing::debug!("User {} opening task attempt {} in editor", user_context.user.username, task_attempt.id);
     // Get the task attempt to access the worktree path
     let attempt = &task_attempt;
 
-    // Get editor command from config or override
-    let editor_command = {
-        let config_guard = app_state.get_config().read().await;
-        if let Some(ref request) = payload {
-            if let Some(ref editor_type) = request.editor_type {
-                // Create a temporary editor config with the override
-                use crate::models::config::{EditorConfig, EditorType};
-                let override_editor_type = match editor_type.as_str() {
-                    "vscode" => EditorType::VSCode,
-                    "cursor" => EditorType::Cursor,
-                    "windsurf" => EditorType::Windsurf,
-                    "intellij" => EditorType::IntelliJ,
-                    "zed" => EditorType::Zed,
-                    "custom" => EditorType::Custom,
-                    _ => config_guard.editor.editor_type.clone(),
-                };
-                let temp_config = EditorConfig {
-                    editor_type: override_editor_type,
-                    custom_command: config_guard.editor.custom_command.clone(),
-                };
-                temp_config.get_command()
-            } else {
-                config_guard.editor.get_command()
-            }
-        } else {
-            config_guard.editor.get_command()
+    // Get user preferences for editor settings
+    let user_preferences = match UserPreferences::get_or_create_for_user(&app_state.db_pool, user_context.user.id).await {
+        Ok(prefs) => prefs,
+        Err(e) => {
+            tracing::error!("Failed to get user preferences: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
+    };
+
+    // Get editor command from user preferences or override
+    let editor_command = if let Some(ref request) = payload {
+        if let Some(ref editor_type) = request.editor_type {
+            // Create a temporary editor config with the override
+            use crate::models::config::{EditorConfig, EditorType};
+            let override_editor_type = match editor_type.as_str() {
+                "vscode" => EditorType::VSCode,
+                "cursor" => EditorType::Cursor,
+                "windsurf" => EditorType::Windsurf,
+                "intellij" => EditorType::IntelliJ,
+                "zed" => EditorType::Zed,
+                "custom" => EditorType::Custom,
+                _ => user_preferences.editor_type.clone(),
+            };
+            let temp_config = EditorConfig {
+                editor_type: override_editor_type,
+                custom_command: user_preferences.editor_custom_command.clone(),
+            };
+            temp_config.get_command()
+        } else {
+            user_preferences.get_editor_command()
+        }
+    } else {
+        user_preferences.get_editor_command()
     };
 
     // Open editor in the worktree directory
@@ -558,6 +585,7 @@ pub async fn open_task_attempt_in_editor(
         }
     }
 }
+*/
 
 pub async fn get_task_attempt_branch_status(
     Extension(project): Extension<Project>,
@@ -1012,7 +1040,14 @@ pub async fn approve_plan(
     Extension(task): Extension<Task>,
     Extension(task_attempt): Extension<TaskAttempt>,
     State(app_state): State<AppState>,
+    Extension(user_context): Extension<UserContext>,
 ) -> Result<ResponseJson<ApiResponse<FollowUpResponse>>, StatusCode> {
+    tracing::debug!(
+        "User {} approving plan for task attempt {} in task {}", 
+        user_context.user.username, 
+        task_attempt.id,
+        task.id
+    );
     let current_task = &task;
 
     // Find plan content with context across the task hierarchy
@@ -1026,6 +1061,8 @@ pub async fn approve_plan(
         description: Some(plan_content),
         wish_id: current_task.wish_id.clone(),
         parent_task_attempt: Some(task_attempt.id),
+        created_by: Some(user_context.user.id), // Use current user as creator
+        assigned_to: current_task.assigned_to,
     };
 
     let new_task = match Task::create(&app_state.db_pool, &create_task_data, new_task_id).await {
@@ -1109,10 +1146,10 @@ pub fn task_attempts_with_id_router(_state: AppState) -> Router<AppState> {
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/rebase",
             post(rebase_task_attempt),
         )
-        .route(
-            "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/open-editor",
-            post(open_task_attempt_in_editor),
-        )
+        // .route(
+        //     "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/open-editor",
+        //     post(open_task_attempt_in_editor),
+        // )
         .route(
             "/projects/:project_id/tasks/:task_id/attempts/:attempt_id/delete-file",
             post(delete_task_attempt_file),

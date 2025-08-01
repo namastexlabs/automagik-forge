@@ -3,12 +3,13 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
-
 import { Settings } from '@/pages/Settings';
 import { McpServers } from '@/pages/McpServers';
+import { AdminPanel } from '@/pages/AdminPanel';
 import { DisclaimerDialog } from '@/components/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
+import { AuthProvider } from '@/components/auth-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { EditorType, ExecutorConfig } from 'shared/types';
 import { configApi } from '@/lib/api';
@@ -137,6 +138,7 @@ function AppContent() {
 
             <Route path="/settings" element={<Settings />} />
             <Route path="/mcp-servers" element={<McpServers />} />
+            <Route path="/admin" element={<AdminPanel />} />
           </SentryRoutes>
         </div>
       </div>
@@ -147,9 +149,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <ConfigProvider>
-        <AppContent />
-      </ConfigProvider>
+      <AuthProvider>
+        <ConfigProvider>
+          <AppContent />
+        </ConfigProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

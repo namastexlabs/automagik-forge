@@ -16,10 +16,9 @@ import type {
   Task,
   TaskAttempt,
   TaskAttemptState,
-  TaskWithAttemptStatus,
   WorktreeDiff,
 } from 'shared/types.ts';
-import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api.ts';
+import { attemptsApi, executionProcessesApi, tasksApi, TaskWithUsersAndAttemptStatus } from '@/lib/api.ts';
 import {
   TaskAttemptDataContext,
   TaskAttemptLoadingContext,
@@ -35,7 +34,7 @@ import {
 import type { AttemptData } from '@/lib/types.ts';
 
 const TaskDetailsProvider: FC<{
-  task: TaskWithAttemptStatus;
+  task: TaskWithUsersAndAttemptStatus;
   projectId: string;
   children: ReactNode;
   setShowEditorDialog: Dispatch<SetStateAction<boolean>>;
