@@ -963,13 +963,13 @@ async fn finalize_task_completion(
 ) {
     // Send notifications if enabled
     let sound_enabled = app_state.get_sound_alerts_enabled().await;
-    let push_enabled = app_state.get_push_notifications_enabled().await;
+    let desktop_enabled = app_state.get_desktop_notifications_enabled().await;
 
-    if sound_enabled || push_enabled {
+    if sound_enabled || desktop_enabled {
         let sound_file = app_state.get_sound_file().await;
         let notification_config = NotificationConfig {
             sound_enabled,
-            push_enabled,
+            push_enabled: desktop_enabled,
         };
 
         let notification_service = NotificationService::new(notification_config);

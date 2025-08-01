@@ -17,7 +17,8 @@ pub struct Config {
     pub telemetry_acknowledged: bool,
     pub sound_alerts: bool,
     pub sound_file: SoundFile,
-    pub push_notifications: bool,
+    #[serde(default)]
+    pub notifications: NotificationSettings,
     pub editor: EditorConfig,
     pub github: GitHubConfig,
     pub analytics_enabled: Option<bool>,
@@ -52,6 +53,22 @@ pub struct GitHubConfig {
     pub username: Option<String>,
     pub primary_email: Option<String>,
     pub default_pr_base: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
+#[ts(export)]
+pub struct NotificationSettings {
+    pub desktop: bool,
+    pub whatsapp: bool,
+}
+
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self {
+            desktop: true,
+            whatsapp: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
@@ -165,7 +182,7 @@ impl Default for Config {
             telemetry_acknowledged: false,
             sound_alerts: true,
             sound_file: SoundFile::AbstractSound4,
-            push_notifications: true,
+            notifications: NotificationSettings::default(),
             editor: EditorConfig::default(),
             github: GitHubConfig::default(),
             analytics_enabled: None,

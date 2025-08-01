@@ -173,9 +173,19 @@ impl AppState {
         config.sound_alerts
     }
 
-    pub async fn get_push_notifications_enabled(&self) -> bool {
+    pub async fn get_notification_settings(&self) -> crate::models::config::NotificationSettings {
         let config = self.config.read().await;
-        config.push_notifications
+        config.notifications.clone()
+    }
+
+    pub async fn get_desktop_notifications_enabled(&self) -> bool {
+        let config = self.config.read().await;
+        config.notifications.desktop
+    }
+
+    pub async fn get_whatsapp_notifications_enabled(&self) -> bool {
+        let config = self.config.read().await;
+        config.notifications.whatsapp
     }
 
     pub async fn get_sound_file(&self) -> crate::models::config::SoundFile {

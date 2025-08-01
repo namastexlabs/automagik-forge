@@ -12,9 +12,7 @@ use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use config::{
     max_chunk_size, max_display_size, max_latency_ms, max_message_size, GeminiStreamConfig,
 };
-// Re-export for external use
 use serde_json::Value;
-pub use streaming::GeminiPatchBatch;
 use streaming::GeminiStreaming;
 use tokio::{io::AsyncWriteExt, process::Command};
 use uuid::Uuid;
@@ -349,13 +347,6 @@ impl GeminiExecutor {
         GeminiStreaming::push_patch(execution_process_id, patches, content_length);
     }
 
-    /// Get WAL batches for an execution process, optionally filtering by cursor
-    pub fn get_wal_batches(
-        execution_process_id: Uuid,
-        after_batch_id: Option<u64>,
-    ) -> Option<Vec<GeminiPatchBatch>> {
-        GeminiStreaming::get_wal_batches(execution_process_id, after_batch_id)
-    }
 
     /// Clean up WAL when execution process finishes
     pub async fn finalize_execution(

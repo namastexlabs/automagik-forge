@@ -2,7 +2,6 @@
 import {
   AuthResponse,
   BranchStatus,
-  CollaborationEvent,
   Config,
   CreateFollowUpAttempt,
   CreateProject,
@@ -16,7 +15,6 @@ import {
   ExecutionProcess,
   ExecutionProcessSummary,
   GitBranch,
-  PresenceStatus,
   ProcessLogsResponse,
   Project,
   ProjectWithBranch,
@@ -32,7 +30,6 @@ import {
   UpdateTaskTemplate,
   User,
   UserInfoResponse,
-  UserPresence,
   WorktreeDiff,
 } from 'shared/types';
 
@@ -677,29 +674,3 @@ export const authApi = {
   },
 };
 
-// Collaboration APIs
-export const collaborationApi = {
-  // Get current presence data for a project
-  getCurrentPresence: async (projectId: string): Promise<UserPresence[]> => {
-    const response = await makeRequest(`/api/projects/${projectId}/presence`);
-    return handleApiResponse<UserPresence[]>(response);
-  },
-
-  // Update user presence status for a project
-  updatePresence: async (projectId: string, status: PresenceStatus): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${projectId}/presence`, {
-      method: 'POST',
-      body: JSON.stringify({ status }),
-    });
-    return handleApiResponse<void>(response);
-  },
-
-  // Get recent collaboration events for a project (for fallback/initial load)
-  getRecentEvents: async (projectId: string, limit: number = 50): Promise<CollaborationEvent[]> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/events?limit=${limit}`
-    );
-    return handleApiResponse<CollaborationEvent[]>(response);
-  },
-
-};

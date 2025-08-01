@@ -125,51 +125,16 @@ pub async fn auth_middleware(
     // Get JWT config from environment or default
     let jwt_config = JwtConfig::default();
 
-    // Try to extract token from Authorization header first
-    let token_string: String;
-    let token = if let Some(auth_header) = req
+    // Extract token from Authorization header
+    let token = req
         .headers()
         .get(AUTHORIZATION)
         .and_then(|header| header.to_str().ok())
-    {
-        // Standard header-based authentication
-        extract_bearer_token(auth_header).ok_or(StatusCode::UNAUTHORIZED)?
-    } else {
-        // For SSE endpoints, check query parameters as fallback
-        let uri = req.uri();
-        let path = uri.path();
-        
-        // Only allow query parameter auth for SSE streaming endpoints
-        if path.ends_with("/events/stream") || path.ends_with("/presence/stream") {
-            if let Some(query) = uri.query() {
-                // Look for token parameter directly in query string
-                let token_param = query
-                    .split('&')
-                    .find(|param| param.starts_with("token="))
-                    .and_then(|param| param.strip_prefix("token="));
-                
-                if let Some(encoded_token) = token_param {
-                    // URL decode the token and store it
-                    token_string = urlencoding::decode(encoded_token)
-                        .map_err(|_| {
-                            tracing::debug!("Failed to decode token from query parameter");
-                            StatusCode::UNAUTHORIZED
-                        })?
-                        .into_owned();
-                    &token_string
-                } else {
-                    tracing::debug!("No token found in query parameters for SSE endpoint: {}", path);
-                    return Err(StatusCode::UNAUTHORIZED);
-                }
-            } else {
-                tracing::debug!("No query parameters found for SSE endpoint: {}", path);
-                return Err(StatusCode::UNAUTHORIZED);
-            }
-        } else {
-            tracing::debug!("No Authorization header found for non-SSE endpoint: {}", path);
-            return Err(StatusCode::UNAUTHORIZED);
-        }
-    };
+        .and_then(|auth_header| extract_bearer_token(auth_header))
+        .ok_or_else(|| {
+            tracing::debug!("No valid Authorization header found");
+            StatusCode::UNAUTHORIZED
+        })?;
 
     // Validate JWT token
     let claims = validate_jwt_token(token, &jwt_config).map_err(|e| {

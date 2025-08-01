@@ -4,6 +4,8 @@ pub mod github_service;
 pub mod notification_service;
 pub mod pr_monitor;
 pub mod process_service;
+pub mod whatsapp_config;
+pub mod whatsapp_notifier;
 
 pub use analytics::{generate_user_id, AnalyticsConfig, AnalyticsService};
 pub use git_service::{GitService, GitServiceError};
@@ -11,3 +13,5 @@ pub use github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubS
 pub use notification_service::{NotificationConfig, NotificationService};
 pub use pr_monitor::PrMonitorService;
 pub use process_service::ProcessService;
+pub use whatsapp_config::WhatsAppConfig;
+pub use whatsapp_notifier::{WhatsAppNotifier, test_whatsapp_notification};

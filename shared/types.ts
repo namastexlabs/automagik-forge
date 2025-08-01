@@ -4,7 +4,7 @@
 
 export type ApiResponse<T> = { success: boolean, data: T | null, message: string | null, };
 
-export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, push_notifications: boolean, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, };
+export type Config = { theme: ThemeMode, executor: ExecutorConfig, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, sound_alerts: boolean, sound_file: SoundFile, notifications: NotificationSettings, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, };
 
 export type ThemeMode = "light" | "dark" | "system" | "purple" | "green" | "blue" | "orange" | "red";
 
@@ -145,26 +145,6 @@ export type GitHubWhitelist = { id: string, github_username: string, github_id: 
 export type CreateGitHubWhitelist = { github_username: string, github_id: bigint | null, invited_by: string | null, notes: string | null, };
 
 export type UpdateGitHubWhitelist = { github_username: string | null, github_id: bigint | null, is_active: boolean | null, notes: string | null, };
-
-export type PublicUser = { id: string, username: string, display_name: string | null, avatar_url: string | null, };
-
-export type PresenceStatus = "Online" | "Away" | "Offline";
-
-export type UserPresence = { user_id: string, username: string, display_name: string | null, avatar_url: string | null, last_seen: Date, status: PresenceStatus, current_project: string | null, };
-
-export type CollaborationEvent = { event_type: string, project_id: string, user_id: string, user_info: PublicUser, data: any, timestamp: Date, event_id: string, };
-
-export type TaskCreatedEvent = { task: Task, created_by: PublicUser, timestamp: Date, };
-
-export type TaskUpdatedEvent = { task: Task, updated_by: PublicUser, changes: Array<string>, timestamp: Date, };
-
-export type TaskAssignedEvent = { task: Task, assigned_by: PublicUser, assigned_to: PublicUser | null, previous_assignee: PublicUser | null, timestamp: Date, };
-
-export type TaskAttemptEvent = { task_attempt: TaskAttempt, task: Task, created_by: PublicUser, timestamp: Date, };
-
-export type UserPresenceEvent = { user_presence: UserPresence, event_type: string, timestamp: Date, };
-
-export type ProjectUpdateEvent = { project: Project, updated_by: PublicUser, changes: Array<string>, timestamp: Date, };
 
 // Generated constants
 export const EXECUTOR_TYPES: string[] = [

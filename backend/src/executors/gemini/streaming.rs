@@ -121,34 +121,6 @@ impl GeminiStreaming {
         }
     }
 
-    /// Get WAL batches for an execution process, optionally filtering by cursor
-    pub fn get_wal_batches(
-        execution_process_id: Uuid,
-        after_batch_id: Option<u64>,
-    ) -> Option<Vec<GeminiPatchBatch>> {
-        GEMINI_WAL_MAP.lock().ok().and_then(|mut wal_map| {
-            wal_map.get_mut(&execution_process_id).map(|wal_state| {
-                // Update access time when WAL is retrieved
-                wal_state.last_access = Instant::now();
-
-                match after_batch_id {
-                    Some(cursor) => {
-                        // Return only batches with batch_id > cursor
-                        wal_state
-                            .batches
-                            .iter()
-                            .filter(|batch| batch.batch_id > cursor)
-                            .cloned()
-                            .collect()
-                    }
-                    None => {
-                        // Return all batches
-                        wal_state.batches.clone()
-                    }
-                }
-            })
-        })
-    }
 
     /// Clean up WAL when execution process finishes
     pub async fn finalize_execution(
