@@ -702,13 +702,4 @@ export const collaborationApi = {
     return handleApiResponse<CollaborationEvent[]>(response);
   },
 
-  // Create event source for real-time events (returns URL for EventSource)
-  getEventStreamUrl: (projectId: string): string => {
-    return `/api/projects/${projectId}/events/stream`;
-  },
-
-  // Create event source for presence updates (returns URL for EventSource)
-  getPresenceStreamUrl: (projectId: string): string => {
-    return `/api/projects/${projectId}/presence/stream`;
-  },
 };
