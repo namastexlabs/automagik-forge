@@ -32,6 +32,7 @@ pub struct AppState {
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
     pub collaboration: CollaborationService,
+    #[allow(dead_code)] // Security audit system for future compliance features
     pub audit_logger: AuditLogger,
     user_id: String,
 }
