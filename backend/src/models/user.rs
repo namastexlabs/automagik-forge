@@ -29,6 +29,7 @@ pub struct User {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct CreateUser {
     pub github_id: i64,
     pub username: String,
@@ -41,6 +42,7 @@ pub struct CreateUser {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct UpdateUser {
     pub username: Option<String>,
     pub email: Option<String>,

@@ -6,29 +6,7 @@
 
 ## 🔐 Security Features Implemented
 
-### 1. **Comprehensive Rate Limiting** ✅
-
-#### **Implementation Location**: `/backend/src/middleware/rate_limiter.rs`
-
-**Features Delivered**:
-- **Per-user rate limiting** with different limits for web and MCP interfaces
-- **IP-based rate limiting** for unauthenticated requests  
-- **Burst protection** with configurable burst limits
-- **Automatic cleanup** of expired rate limit entries
-- **Rate limit headers** in all responses
-- **Configurable limits** by endpoint type:
-  - Web API: 60 requests/minute, burst 10
-  - Auth endpoints: 10 requests/minute, burst 3
-  - MCP tools: 120 requests/minute, burst 20
-  - Admin endpoints: 30 requests/hour, burst 5
-  - Unauthenticated IP: 30 requests/minute, burst 5
-
-**Integration**:
-- Added `RateLimiter` to `AppState`
-- Applied to public routes with specific auth endpoint protection
-- Middleware functions for different endpoint types
-
-### 2. **GitHub Token Encryption** ✅
+### 1. **GitHub Token Encryption** ✅
 
 #### **Implementation Location**: `/backend/src/security/token_encryption.rs`
 
@@ -45,7 +23,7 @@
 - Proper cryptographic practices with authenticated encryption
 - Memory-safe token handling
 
-### 3. **Comprehensive Audit Logging** ✅
+### 2. **Comprehensive Audit Logging** ✅
 
 #### **Implementation Location**: `/backend/src/security/audit_logger.rs`
 
@@ -61,12 +39,11 @@
 **Event Types Logged**:
 - Authentication attempts (success/failure)
 - Admin actions and whitelist changes
-- Rate limiting violations
 - Security violations and threat detection
 - Token access and rotation
 - Configuration changes
 
-### 4. **Enhanced Session Security** ✅
+### 3. **Enhanced Session Security** ✅
 
 #### **Implementation Location**: `/backend/src/security/session_security.rs`
 
@@ -83,7 +60,7 @@
 - Limits on concurrent sessions prevent account sharing
 - Administrative controls for emergency session management
 
-### 5. **Security Headers & Network Protection** ✅
+### 4. **Security Headers & Network Protection** ✅
 
 #### **Implementation Location**: `/backend/src/security/security_headers.rs`
 
@@ -102,7 +79,7 @@
 - Credential support for authenticated requests
 - Proper preflight handling
 
-### 6. **Security Monitoring & Alerting** ✅
+### 5. **Security Monitoring & Alerting** ✅
 
 #### **Implementation Location**: `/backend/src/security/monitoring.rs`
 
@@ -117,11 +94,10 @@
 
 **Monitoring Capabilities**:
 - Failed authentication attempt detection
-- Rate limiting violation analysis
 - System health degradation alerts
 - Suspicious activity pattern recognition
 
-### 7. **Enhanced Health Checks** ✅
+### 6. **Enhanced Health Checks** ✅
 
 #### **Implementation Location**: `/backend/src/routes/health.rs`
 

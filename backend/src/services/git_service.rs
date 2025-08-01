@@ -917,6 +917,7 @@ impl GitService {
     }
 
     /// Delete a file from the repository and commit the change
+    #[allow(dead_code)]
     pub fn delete_file_and_commit(
         &self,
         worktree_path: &Path,

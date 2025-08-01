@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum SessionSecurityError {
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
@@ -35,6 +36,7 @@ pub enum SessionSecurityError {
 
 /// Session security configuration
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SessionSecurityConfig {
     pub max_concurrent_web_sessions: u32,
     pub max_concurrent_mcp_sessions: u32,
@@ -56,6 +58,7 @@ impl Default for SessionSecurityConfig {
 }
 
 /// Enhanced session security manager
+#[allow(dead_code)]
 pub struct SessionSecurity {
     db_pool: SqlitePool,
     jwt_config: JwtConfig,
@@ -63,6 +66,7 @@ pub struct SessionSecurity {
     config: SessionSecurityConfig,
 }
 
+#[allow(dead_code)]
 impl SessionSecurity {
     pub fn new(
         db_pool: SqlitePool,
@@ -450,6 +454,7 @@ impl SessionSecurity {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct SessionMetrics {
     pub total_active_sessions: u64,
     pub web_sessions: u64,
@@ -459,6 +464,7 @@ pub struct SessionMetrics {
 
 #[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct SecurityAlert {
     pub alert_type: SecurityAlertType,
     pub description: String,
@@ -468,6 +474,7 @@ pub struct SecurityAlert {
 
 #[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub enum SecurityAlertType {
     ExcessiveSessions,
     StaleTokens,

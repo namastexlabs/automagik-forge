@@ -19,6 +19,7 @@ pub struct ProcessService;
 
 impl ProcessService {
     /// Run cleanup script if project has one configured
+    #[allow(dead_code)]
     pub async fn run_cleanup_script_if_configured(
         pool: &SqlitePool,
         app_state: &crate::app_state::AppState,

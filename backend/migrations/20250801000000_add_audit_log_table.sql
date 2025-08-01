@@ -3,7 +3,7 @@ CREATE TABLE audit_log (
     id BLOB PRIMARY KEY,
     event_type TEXT NOT NULL CHECK (event_type IN (
         'authentication', 'authorization', 'admin_action', 'user_management',
-        'whitelist_change', 'token_access', 'rate_limit', 'security_violation',
+        'whitelist_change', 'token_access', 'security_violation',
         'config_change', 'data_access'
     )),
     user_id BLOB REFERENCES users(id),

@@ -198,6 +198,7 @@ ORDER BY t.created_at DESC"#,
         Ok(tasks)
     }
 
+    #[allow(dead_code)]
     pub async fn find_by_project_id_with_users(
         pool: &SqlitePool,
         project_id: Uuid,

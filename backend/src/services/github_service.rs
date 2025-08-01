@@ -220,6 +220,7 @@ impl GitHubService {
     }
 
     /// Update and get the status of a pull request
+    #[allow(dead_code)]
     pub async fn update_pr_status(
         &self,
         repo_info: &GitHubRepoInfo,

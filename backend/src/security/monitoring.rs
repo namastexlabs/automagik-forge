@@ -14,6 +14,7 @@ use crate::{
 };
 
 /// Security monitoring service that continuously monitors for security threats
+#[allow(dead_code)]
 pub struct SecurityMonitor {
     db_pool: SqlitePool,
     audit_logger: AuditLogger,
@@ -22,6 +23,7 @@ pub struct SecurityMonitor {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SecurityMonitorConfig {
     pub monitor_interval_seconds: u64,
     pub max_failed_auth_attempts: u32,
@@ -74,6 +76,7 @@ pub enum HealthStatus {
 }
 
 impl SecurityMonitor {
+    #[allow(dead_code)]
     pub fn new(
         db_pool: SqlitePool,
         audit_logger: AuditLogger,
@@ -89,6 +92,7 @@ impl SecurityMonitor {
     }
 
     /// Start the security monitoring service
+    #[allow(dead_code)]
     pub async fn start(&self) {
         let mut interval = interval(Duration::from_secs(self.config.monitor_interval_seconds));
         
@@ -104,6 +108,7 @@ impl SecurityMonitor {
     }
 
     /// Run comprehensive security checks
+    #[allow(dead_code)]
     async fn run_security_checks(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Running security checks...");
 
@@ -139,6 +144,7 @@ impl SecurityMonitor {
     }
 
     /// Collect comprehensive security metrics
+    #[allow(dead_code)]
     async fn collect_security_metrics(&self) -> Result<SecurityMetrics, Box<dyn std::error::Error + Send + Sync>> {
         let now = Utc::now();
         let one_hour_ago = now - chrono::Duration::hours(1);
@@ -199,6 +205,7 @@ impl SecurityMonitor {
     }
 
     /// Analyze security metrics for potential threats
+    #[allow(dead_code)]
     async fn analyze_security_threats(
         &self,
         metrics: &SecurityMetrics,
@@ -247,6 +254,7 @@ impl SecurityMonitor {
     }
 
     /// Handle detected security threats
+    #[allow(dead_code)]
     async fn handle_security_threats(
         &self,
         threats: Vec<SecurityThreat>,
@@ -297,6 +305,7 @@ impl SecurityMonitor {
     }
 
     /// Take automated response to security threats
+    #[allow(dead_code)]
     async fn take_automated_response(
         &self,
         threat: &SecurityThreat,
@@ -306,10 +315,6 @@ impl SecurityMonitor {
                 info!("Automated response: Increasing authentication rate limits temporarily");
                 // In a real implementation, you might temporarily tighten rate limits
                 // or implement IP-based blocking
-            }
-            ThreatType::ExcessiveRateLimiting => {
-                info!("Automated response: Reviewing rate limit violations");
-                // Could implement temporary IP blocking or alert admins
             }
             ThreatType::SystemDegraded => {
                 if matches!(threat.severity, ThreatSeverity::Critical) {
@@ -326,6 +331,7 @@ impl SecurityMonitor {
     }
 
     /// Send security alert via email (placeholder implementation)
+    #[allow(dead_code)]
     async fn send_security_alert(
         &self,
         email: &str,
@@ -340,6 +346,7 @@ impl SecurityMonitor {
     }
 
     /// Assess overall system health
+    #[allow(dead_code)]
     async fn assess_system_health(&self) -> Result<SystemHealth, Box<dyn std::error::Error + Send + Sync>> {
         // Check database health
         let database_status = match sqlx::query!("SELECT 1 as status").fetch_one(&self.db_pool).await {
@@ -381,6 +388,7 @@ impl SecurityMonitor {
     }
 
     /// Get current security metrics (for API endpoints)
+    #[allow(dead_code)]
     pub async fn get_current_metrics(&self) -> Result<SecurityMetrics, Box<dyn std::error::Error + Send + Sync>> {
         self.collect_security_metrics().await
     }
@@ -398,7 +406,6 @@ pub struct SecurityThreat {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ThreatType {
     ExcessiveFailedAuth,
-    ExcessiveRateLimiting,
     SuspiciousActivity,
     SystemDegraded,
 }
@@ -412,6 +419,7 @@ pub enum ThreatSeverity {
 }
 
 /// Security monitoring task that can be spawned
+#[allow(dead_code)]
 pub async fn start_security_monitoring(
     db_pool: SqlitePool,
     audit_logger: AuditLogger,

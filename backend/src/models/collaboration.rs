@@ -175,18 +175,28 @@ pub struct ProjectUpdateEvent {
 
 /// Connection information for SSE management
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ConnectionInfo {
+    #[allow(dead_code)]
     pub user_id: Uuid,
+    #[allow(dead_code)]
     pub project_id: Uuid,
+    #[allow(dead_code)]
     pub connection_id: Uuid,
+    #[allow(dead_code)]
     pub connected_at: DateTime<Utc>,
+    #[allow(dead_code)]
     pub last_seen: DateTime<Utc>,
 }
 
 /// Event subscription for filtering
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EventSubscription {
+    #[allow(dead_code)]
     pub user_id: Uuid,
+    #[allow(dead_code)]
     pub project_id: Option<Uuid>, // None means all projects
+    #[allow(dead_code)]
     pub event_types: Option<Vec<String>>, // None means all event types
 }

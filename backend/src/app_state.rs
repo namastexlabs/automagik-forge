@@ -231,6 +231,7 @@ impl AppState {
     }
 
     /// Access to audit logger for security events
+    #[allow(dead_code)]
     pub fn audit_logger(&self) -> &AuditLogger {
         &self.audit_logger
     }

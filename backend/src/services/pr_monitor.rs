@@ -40,6 +40,7 @@ impl PrMonitorService {
     }
 
     /// Start the PR monitoring service with config
+    #[allow(dead_code)]
     pub async fn start_with_config(&self, config: Arc<RwLock<Config>>) {
         info!(
             "Starting PR monitoring service with interval {:?}",

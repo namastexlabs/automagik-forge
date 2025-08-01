@@ -199,6 +199,7 @@ fn get_allowed_origins() -> Vec<String> {
 }
 
 /// Middleware to add security context to response headers for debugging
+#[allow(dead_code)]
 pub async fn security_context_middleware(
     req: Request,
     next: Next,

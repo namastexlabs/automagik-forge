@@ -47,11 +47,6 @@ OAUTH_CALLBACK_URL=https://your-domain.com/auth/github/callback
 CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
 ALLOWED_HOSTS=your-domain.com,www.your-domain.com
 
-# Rate Limiting Configuration
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_PER_MINUTE=60
-RATE_LIMIT_BURST=10
-RATE_LIMIT_REDIS_URL=redis://redis:6379  # Optional: Redis for distributed rate limiting
 
 # Audit and Monitoring
 AUDIT_LOG_LEVEL=INFO
@@ -407,8 +402,7 @@ The application provides a comprehensive health check endpoint at `/api/health`:
   "mcp_server": "running",
   "version": "0.2.3",
   "uptime": 3600,
-  "active_sessions": 5,
-  "rate_limit_status": "normal"
+  "active_sessions": 5
 }
 ```
 
@@ -435,7 +429,6 @@ Create dashboards for:
 - Request rate and response times
 - Authentication success/failure rates
 - Active sessions and user activity
-- Rate limiting violations
 - Security events from audit log
 - Database performance metrics
 
@@ -650,7 +643,6 @@ systemctl restart automagik-forge
 - [ ] **Database**: Properly configured with foreign key constraints
 - [ ] **HTTPS**: Valid SSL certificate configured
 - [ ] **CORS**: Restricted to specific domains
-- [ ] **Rate Limiting**: Enabled and configured
 - [ ] **Security Headers**: All security headers configured
 - [ ] **Firewall**: Only necessary ports open
 - [ ] **User Permissions**: Application runs as non-root user
@@ -663,7 +655,6 @@ systemctl restart automagik-forge
 
 - [ ] **Health Check**: Application responding correctly
 - [ ] **Authentication**: GitHub OAuth working properly
-- [ ] **Rate Limiting**: Confirmed working with test requests
 - [ ] **Audit Logging**: Security events being logged
 - [ ] **Backups**: First backup completed successfully
 - [ ] **Monitoring**: Metrics being collected correctly
@@ -686,10 +677,6 @@ systemctl restart automagik-forge
 - Check JWT secret configuration
 - Review CORS settings for frontend domain
 
-#### Rate Limiting False Positives
-- Review rate limit thresholds
-- Check for misconfigured proxy headers
-- Verify user identification logic
 
 #### Database Performance
 - Run `PRAGMA optimize;` regularly

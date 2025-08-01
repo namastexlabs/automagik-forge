@@ -83,6 +83,7 @@ impl TokenEncryption {
     }
 
     /// Encrypt a GitHub token for database storage
+    #[allow(dead_code)]
     pub fn encrypt_github_token(&self, token: &str) -> Result<String, TokenEncryptionError> {
         if token.is_empty() {
             return Ok(String::new());
@@ -104,6 +105,7 @@ impl TokenEncryption {
     }
 
     /// Decrypt a GitHub token from database storage
+    #[allow(dead_code)]
     pub fn decrypt_github_token(&self, encrypted_token: &str) -> Result<String, TokenEncryptionError> {
         if encrypted_token.is_empty() {
             return Ok(String::new());
@@ -135,12 +137,14 @@ impl TokenEncryption {
     }
 
     /// Generate a new encryption key (for key rotation)
+    #[allow(dead_code)]
     pub fn generate_new_key() -> String {
         let key = Aes256Gcm::generate_key(&mut OsRng);
         STANDARD.encode(key.as_slice())
     }
 
     /// Validate encryption key format
+    #[allow(dead_code)]
     pub fn validate_key(key_base64: &str) -> Result<(), TokenEncryptionError> {
         let key_bytes = STANDARD
             .decode(key_base64)
@@ -163,14 +167,17 @@ pub struct SecureString {
 }
 
 impl SecureString {
+    #[allow(dead_code)]
     pub fn new(data: String) -> Self {
         Self { data }
     }
 
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &str {
         &self.data
     }
 
+    #[allow(dead_code)]
     pub fn into_string(self) -> String {
         self.data.clone()
     }
@@ -195,6 +202,7 @@ impl std::fmt::Debug for SecureString {
 }
 
 /// Helper function to encrypt token for user model updates
+#[allow(dead_code)]
 pub fn encrypt_token_for_storage(token: Option<&str>) -> Result<Option<String>, TokenEncryptionError> {
     match token {
         Some(token_str) if !token_str.is_empty() => {
@@ -206,6 +214,7 @@ pub fn encrypt_token_for_storage(token: Option<&str>) -> Result<Option<String>, 
 }
 
 /// Helper function to decrypt token from user model
+#[allow(dead_code)]
 pub fn decrypt_token_from_storage(encrypted_token: Option<&str>) -> Result<Option<SecureString>, TokenEncryptionError> {
     match encrypted_token {
         Some(encrypted_str) if !encrypted_str.is_empty() => {

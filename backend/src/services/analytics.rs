@@ -61,6 +61,7 @@ impl AnalyticsService {
         Self { config, client }
     }
 
+    #[allow(dead_code)]
     pub fn is_enabled(&self) -> bool {
         self.config.enabled
             && !self.config.posthog_api_key.is_empty()
@@ -131,6 +132,7 @@ impl AnalyticsService {
 
 /// Generates a consistent, anonymous user ID for npm package telemetry.
 /// Returns a hex string prefixed with "npm_user_"
+#[allow(dead_code)]
 pub fn generate_user_id() -> String {
     let mut hasher = DefaultHasher::new();
 

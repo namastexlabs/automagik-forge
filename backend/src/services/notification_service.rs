@@ -49,6 +49,7 @@ impl NotificationService {
     }
 
     /// Play a system sound notification across platforms
+    #[allow(dead_code)]
     pub async fn play_sound_notification(&self, sound_file: &SoundFile) {
         if !self.sound_enabled {
             return;
@@ -114,6 +115,7 @@ impl NotificationService {
     }
 
     /// Send a cross-platform push notification
+    #[allow(dead_code)]
     pub async fn send_push_notification(&self, title: &str, message: &str) {
         if !self.push_enabled {
             return;

@@ -71,6 +71,7 @@ impl CollaborationService {
     }
 
     /// Subscribe to all events for a user (across all projects they have access to)
+    #[allow(dead_code)]
     pub async fn subscribe_to_user_events(
         &self, 
         _user_id: Uuid
@@ -98,6 +99,7 @@ impl CollaborationService {
     }
 
     /// Broadcast event to a specific project
+    #[allow(dead_code)]
     pub async fn broadcast_to_project(&self, project_id: Uuid, event: CollaborationEvent) -> Result<(), broadcast::error::SendError<CollaborationEvent>> {
         // Ensure the event is tagged with the correct project
         let mut project_event = event;
@@ -107,6 +109,7 @@ impl CollaborationService {
     }
 
     /// Broadcast event to a specific user
+    #[allow(dead_code)]
     pub async fn broadcast_to_user(&self, _user_id: Uuid, event: CollaborationEvent) -> Result<(), broadcast::error::SendError<CollaborationEvent>> {
         // For now, just broadcast globally (in a real implementation, you'd target specific users)
         self.broadcast_event(event).await
@@ -228,18 +231,21 @@ impl CollaborationService {
     }
 
     /// Get all user presence
+    #[allow(dead_code)]
     pub async fn get_all_presence(&self) -> Vec<UserPresence> {
         let presence = self.user_presence.read().await;
         presence.values().cloned().collect()
     }
 
     /// Get active connections count
+    #[allow(dead_code)]
     pub async fn get_connection_count(&self) -> usize {
         let connections = self.connections.read().await;
         connections.len()
     }
 
     /// Get active connections for a project
+    #[allow(dead_code)]
     pub async fn get_project_connection_count(&self, project_id: Uuid) -> usize {
         let connections = self.connections.read().await;
         connections.values()
@@ -248,6 +254,7 @@ impl CollaborationService {
     }
 
     /// Cleanup stale connections (should be called periodically)
+    #[allow(dead_code)]
     pub async fn cleanup_stale_connections(&self, max_age: chrono::Duration) {
         let cutoff = Utc::now() - max_age;
         let mut stale_connections = Vec::new();
