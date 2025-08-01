@@ -187,12 +187,12 @@ fn get_allowed_origins() -> Vec<String> {
 
     // Default development origins if none configured
     if origins.is_empty() {
-        origins.extend_from_slice(&[
-            "http://localhost:3000".to_string(),
-            "http://127.0.0.1:3000".to_string(),
-            "http://localhost:3001".to_string(),
-            "http://127.0.0.1:3001".to_string(),
-        ]);
+        // Add common development ports
+        let dev_ports = [3000, 3001, 8887, 8888, 8889];
+        for port in dev_ports {
+            origins.push(format!("http://localhost:{}", port));
+            origins.push(format!("http://127.0.0.1:{}", port));
+        }
     }
 
     origins
