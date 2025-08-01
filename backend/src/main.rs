@@ -221,6 +221,7 @@ fn main() -> anyhow::Result<()> {
                         .route("/api/auth/github/device/start", post(routes_auth::device_start))
                         .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
                 )
+                .nest("/api", config::config_router())
                 .merge(oauth::oauth_router());
 
             // Protected routes (require authentication)
@@ -228,7 +229,6 @@ fn main() -> anyhow::Result<()> {
                 .merge(stream::stream_router())
                 .merge(collaboration::collaboration_router())
                 .merge(filesystem::filesystem_router())
-                .merge(config::config_router())
                 .route("/auth/github/check", get(routes_auth::github_check_token))
                 .route("/auth/me", get(routes_auth::get_current_user_info))
                 .route("/auth/logout", post(routes_auth::logout))

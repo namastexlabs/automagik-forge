@@ -22,7 +22,6 @@ pub struct GitHubWhitelist {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
-#[allow(dead_code)]
 pub struct CreateGitHubWhitelist {
     pub github_username: String,
     pub github_id: Option<i64>,
@@ -176,7 +175,6 @@ impl GitHubWhitelist {
     }
 
     /// Create a new whitelist entry
-    #[allow(dead_code)]
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateGitHubWhitelist,
@@ -272,7 +270,6 @@ impl GitHubWhitelist {
     }
 
     /// Add GitHub username to whitelist
-    #[allow(dead_code)]
     pub async fn add_username(
         pool: &SqlitePool,
         github_username: &str,

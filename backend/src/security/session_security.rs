@@ -484,7 +484,6 @@ pub enum SecurityAlertType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::user_session::{CreateUserSession, SessionType};
 
     #[tokio::test]
     async fn test_session_security_config() {

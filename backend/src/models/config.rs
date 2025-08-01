@@ -195,7 +195,6 @@ impl Default for GitHubConfig {
 }
 
 impl EditorConfig {
-    #[allow(dead_code)]
     pub fn get_command(&self) -> Vec<String> {
         match &self.editor_type {
             EditorType::VSCode => vec!["code".to_string()],

@@ -596,7 +596,7 @@ mod tests {
     async fn test_audit_logger_basic_functionality(pool: SqlitePool) -> sqlx::Result<()> {
         // Create audit_log table for testing
         sqlx::query!(
-            r#"CREATE TABLE audit_log (
+            r#"CREATE TABLE IF NOT EXISTS audit_log (
                 id TEXT PRIMARY KEY,
                 event_type TEXT NOT NULL,
                 user_id TEXT,

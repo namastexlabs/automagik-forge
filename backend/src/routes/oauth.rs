@@ -402,22 +402,56 @@ pub async fn oauth_callback(
         .unwrap_or("")
         .to_string();
 
-    // Check if user is whitelisted
-    let is_whitelisted = match User::is_github_id_whitelisted(&app_state.db_pool, github_id).await {
-        Ok(whitelisted) => whitelisted,
-        Err(_) => {
+    // Check if whitelist is disabled via environment variable
+    let whitelist_disabled = std::env::var("DISABLE_GITHUB_WHITELIST")
+        .map(|v| v.to_lowercase() == "true" || v == "1")
+        .unwrap_or(false);
+
+    if !whitelist_disabled {
+        // Check whitelist: first try environment variable, then database
+        let mut is_whitelisted = false;
+        
+        // Check environment variable whitelist first
+        if let Ok(env_whitelist) = std::env::var("GITHUB_WHITELIST") {
+            let whitelisted_users: Vec<&str> = env_whitelist
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            
+            if whitelisted_users.contains(&username.as_str()) {
+                is_whitelisted = true;
+                tracing::info!("User {} (ID: {}) allowed via environment whitelist", username, github_id);
+            }
+        }
+        
+        // If not in environment whitelist, check database
+        if !is_whitelisted {
+            match User::is_github_id_whitelisted(&app_state.db_pool, github_id).await {
+                Ok(whitelisted) => {
+                    is_whitelisted = whitelisted;
+                    if is_whitelisted {
+                        tracing::info!("User {} (ID: {}) allowed via database whitelist", username, github_id);
+                    }
+                }
+                Err(_) => {
+                    return Err(oauth_error_response(
+                        "server_error",
+                        Some("Failed to validate user access"),
+                    ));
+                }
+            }
+        }
+
+        if !is_whitelisted {
+            tracing::warn!("User {} (ID: {}) is not in whitelist", username, github_id);
             return Err(oauth_error_response(
-                "server_error",
-                Some("Failed to validate user access"),
+                "access_denied",
+                Some("User not authorized to access this application"),
             ));
         }
-    };
-
-    if !is_whitelisted {
-        return Err(oauth_error_response(
-            "access_denied",
-            Some("User not authorized to access this application"),
-        ));
+    } else {
+        tracing::info!("GitHub whitelist is disabled, allowing user {} (ID: {})", username, github_id);
     }
 
     // Create or update user in database
@@ -601,9 +635,11 @@ pub async fn oauth_token(
         }
     }
 
+    // Generate session ID first
+    let session_id = Uuid::new_v4();
+    
     // Generate JWT token for MCP session
     let jwt_config = JwtConfig::default();
-    let session_id = Uuid::new_v4();
 
     let jwt_token = match generate_jwt_token(
         auth_code.user_id,
@@ -623,16 +659,17 @@ pub async fn oauth_token(
     // Hash token for database storage
     let token_hash = hash_token(&jwt_token);
 
-    // Create MCP session in database
-    match UserSession::create_with_defaults(
-        &app_state.db_pool,
-        auth_code.user_id,
+    // Create MCP session in database with the same session_id used in JWT
+    let expires_at = chrono::Utc::now() + chrono::Duration::days(UserSession::MCP_SESSION_DURATION_DAYS);
+    let session_data = crate::models::user_session::CreateUserSession {
+        user_id: auth_code.user_id,
         token_hash,
-        SessionType::Mcp,
-        Some(format!("MCP Client: {}", auth_code.client_id)),
-    )
-    .await
-    {
+        session_type: SessionType::Mcp,
+        client_info: Some(format!("MCP Client: {}", auth_code.client_id)),
+        expires_at,
+    };
+
+    match UserSession::create(&app_state.db_pool, &session_data, session_id).await {
         Ok(_) => {}
         Err(_) => {
             return Err(oauth_error_response(

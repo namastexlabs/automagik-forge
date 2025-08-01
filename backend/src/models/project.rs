@@ -122,21 +122,66 @@ pub struct CreateBranch {
 }
 
 impl Project {
+    // Helper function to parse UUID from BLOB data
+    fn parse_uuid_from_blob(blob: &[u8]) -> Uuid {
+        if blob.len() == 16 {
+            // Binary UUID format
+            Uuid::from_slice(blob).unwrap_or_default()
+        } else {
+            // Text UUID format stored in BLOB
+            let uuid_str = String::from_utf8_lossy(blob);
+            Uuid::parse_str(&uuid_str).unwrap_or_default()
+        }
+    }
+
+    // Helper function to parse datetime from text
+    fn parse_datetime_from_text(text: &str) -> DateTime<Utc> {
+        chrono::DateTime::parse_from_str(text, "%Y-%m-%d %H:%M:%S%.f")
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now())
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects ORDER BY created_at DESC"#
+        let records = sqlx::query!(
+            r#"SELECT id as "id!", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by", created_at as "created_at!", updated_at as "updated_at!" FROM projects ORDER BY created_at DESC"#
         )
         .fetch_all(pool)
-        .await
+        .await?;
+
+        let projects = records
+            .into_iter()
+            .map(|rec| {
+                // Parse UUIDs from BLOB data
+                let id = Self::parse_uuid_from_blob(&rec.id);
+                let created_by = rec.created_by.as_ref().map(|blob| Self::parse_uuid_from_blob(blob));
+
+                // Parse datetime fields
+                let created_at = Self::parse_datetime_from_text(&rec.created_at);
+                let updated_at = Self::parse_datetime_from_text(&rec.updated_at);
+
+                Project {
+                    id,
+                    name: rec.name,
+                    git_repo_path: rec.git_repo_path,
+                    setup_script: rec.setup_script,
+                    dev_script: rec.dev_script,
+                    cleanup_script: rec.cleanup_script,
+                    created_by,
+                    created_at,
+                    updated_at,
+                }
+            })
+            .collect();
+
+        Ok(projects)
     }
 
     pub async fn find_all_with_creators(pool: &SqlitePool) -> Result<Vec<ProjectWithCreator>, sqlx::Error> {
         let records = sqlx::query!(
             r#"SELECT 
-                p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script,
-                p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>", 
-                p.created_by as "created_by: Uuid",
+                p.id as "id!", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script,
+                p.created_at as "created_at!", p.updated_at as "updated_at!", 
+                p.created_by as "created_by",
                 u.username as creator_username, u.display_name as creator_display_name
                FROM projects p
                LEFT JOIN users u ON p.created_by = u.id
@@ -147,18 +192,28 @@ impl Project {
 
         let projects = records
             .into_iter()
-            .map(|rec| ProjectWithCreator {
-                id: rec.id,
-                name: rec.name,
-                git_repo_path: rec.git_repo_path,
-                setup_script: rec.setup_script,
-                dev_script: rec.dev_script,
-                cleanup_script: rec.cleanup_script,
-                created_by: rec.created_by,
-                creator_username: rec.creator_username,
-                creator_display_name: rec.creator_display_name,
-                created_at: rec.created_at,
-                updated_at: rec.updated_at,
+            .map(|rec| {
+                // Parse UUIDs from BLOB data
+                let id = Self::parse_uuid_from_blob(&rec.id);
+                let created_by = rec.created_by.as_ref().map(|blob| Self::parse_uuid_from_blob(blob));
+
+                // Parse datetime fields
+                let created_at = Self::parse_datetime_from_text(&rec.created_at);
+                let updated_at = Self::parse_datetime_from_text(&rec.updated_at);
+
+                ProjectWithCreator {
+                    id,
+                    name: rec.name,
+                    git_repo_path: rec.git_repo_path,
+                    setup_script: rec.setup_script,
+                    dev_script: rec.dev_script,
+                    cleanup_script: rec.cleanup_script,
+                    created_by,
+                    creator_username: rec.creator_username,
+                    creator_display_name: rec.creator_display_name,
+                    created_at,
+                    updated_at,
+                }
             })
             .collect();
 
@@ -166,26 +221,68 @@ impl Project {
     }
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE id = $1"#,
+        let record = sqlx::query!(
+            r#"SELECT id as "id!", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by", created_at as "created_at!", updated_at as "updated_at!" FROM projects WHERE id = $1"#,
             id
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+
+        match record {
+            Some(rec) => {
+                let project_id = Self::parse_uuid_from_blob(&rec.id);
+                let created_by = rec.created_by.as_ref().map(|blob| Self::parse_uuid_from_blob(blob));
+                let created_at = Self::parse_datetime_from_text(&rec.created_at);
+                let updated_at = Self::parse_datetime_from_text(&rec.updated_at);
+
+                Ok(Some(Project {
+                    id: project_id,
+                    name: rec.name,
+                    git_repo_path: rec.git_repo_path,
+                    setup_script: rec.setup_script,
+                    dev_script: rec.dev_script,
+                    cleanup_script: rec.cleanup_script,
+                    created_by,
+                    created_at,
+                    updated_at,
+                }))
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn find_by_git_repo_path(
         pool: &SqlitePool,
         git_repo_path: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>" FROM projects WHERE git_repo_path = $1"#,
+        let record = sqlx::query!(
+            r#"SELECT id as "id!", name, git_repo_path, setup_script, dev_script, cleanup_script, created_by as "created_by", created_at as "created_at!", updated_at as "updated_at!" FROM projects WHERE git_repo_path = $1"#,
             git_repo_path
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+
+        match record {
+            Some(rec) => {
+                let project_id = Self::parse_uuid_from_blob(&rec.id);
+                let created_by = rec.created_by.as_ref().map(|blob| Self::parse_uuid_from_blob(blob));
+                let created_at = Self::parse_datetime_from_text(&rec.created_at);
+                let updated_at = Self::parse_datetime_from_text(&rec.updated_at);
+
+                Ok(Some(Project {
+                    id: project_id,
+                    name: rec.name,
+                    git_repo_path: rec.git_repo_path,
+                    setup_script: rec.setup_script,
+                    dev_script: rec.dev_script,
+                    cleanup_script: rec.cleanup_script,
+                    created_by,
+                    created_at,
+                    updated_at,
+                }))
+            }
+            None => Ok(None),
+        }
     }
 
     pub async fn find_by_git_repo_path_excluding_id(
