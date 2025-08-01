@@ -11,45 +11,43 @@ if (!bumpType || !['patch', 'minor', 'major', 'prerelease'].includes(bumpType)) 
   process.exit(1);
 }
 
-// Semantic version bumping function with pre-release support
+// Standard semantic version bumping with beta pre-releases
 function bumpVersion(version, type) {
-  // Handle pre-release versions (e.g., 0.2.7.1)
-  const parts = version.split('.');
-  
-  if (parts.length === 4) {
-    // Current version is a pre-release (0.2.7.1)
-    const [major, minor, patch, prerelease] = parts.map(Number);
-    
-    switch (type) {
-      case 'major':
-        return `${major + 1}.0.0`;
-      case 'minor':
-        return `${major}.${minor + 1}.0`;
-      case 'patch':
-        return `${major}.${minor}.${patch + 1}`;
-      case 'prerelease':
-        return `${major}.${minor}.${patch}.${prerelease + 1}`;
-      default:
-        throw new Error(`Invalid bump type: ${type}`);
-    }
-  } else if (parts.length === 3) {
-    // Current version is stable (0.2.7)
-    const [major, minor, patch] = parts.map(Number);
-    
-    switch (type) {
-      case 'major':
-        return `${major + 1}.0.0`;
-      case 'minor':
-        return `${major}.${minor + 1}.0`;
-      case 'patch':
-        return `${major}.${minor}.${patch + 1}`;
-      case 'prerelease':
-        return `${major}.${minor}.${patch}.1`;
-      default:
-        throw new Error(`Invalid bump type: ${type}`);
-    }
-  } else {
+  // Parse version with potential pre-release identifier (e.g., 0.2.8-beta.1)
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/);
+  if (!match) {
     throw new Error(`Invalid version format: ${version}`);
+  }
+  
+  const [, major, minor, patch, prerelease] = match;
+  const majorNum = parseInt(major);
+  const minorNum = parseInt(minor);
+  const patchNum = parseInt(patch);
+  
+  switch (type) {
+    case 'prerelease':
+      if (prerelease) {
+        // Already a pre-release, increment the pre-release number
+        const betaMatch = prerelease.match(/^beta\.(\d+)$/);
+        if (betaMatch) {
+          const betaNum = parseInt(betaMatch[1]);
+          return `${majorNum}.${minorNum}.${patchNum}-beta.${betaNum + 1}`;
+        } else {
+          // If not beta format, start with beta.1
+          return `${majorNum}.${minorNum}.${patchNum}-beta.1`;
+        }
+      } else {
+        // Stable version, create first pre-release
+        return `${majorNum}.${minorNum}.${patchNum}-beta.1`;
+      }
+    case 'patch':
+      return `${majorNum}.${minorNum}.${patchNum + 1}`;
+    case 'minor':
+      return `${majorNum}.${minorNum + 1}.0`;
+    case 'major':
+      return `${majorNum + 1}.0.0`;
+    default:
+      throw new Error(`Unknown bump type: ${type}`);
   }
 }
 
