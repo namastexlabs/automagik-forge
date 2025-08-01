@@ -10,7 +10,7 @@ permissions:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 10.8.1
+  PNPM_VERSION: 10.12.4
   RUST_TOOLCHAIN: nightly-2025-05-18
 
 jobs:
@@ -24,16 +24,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -114,16 +106,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
