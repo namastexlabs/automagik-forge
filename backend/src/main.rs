@@ -25,6 +25,7 @@ mod mcp;
 mod middleware;
 mod models;
 mod routes;
+mod security;
 mod services;
 mod utils;
 

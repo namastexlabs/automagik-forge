@@ -1,6 +1,6 @@
 [package]
 name = "automagik-forge"
-version = "0.2.8"
+version = "0.2.8.1"
 edition = "2021"
 default-run = "automagik-forge"
 build = "build.rs"
