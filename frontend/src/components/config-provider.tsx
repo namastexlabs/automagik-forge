@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Config } from 'shared/types';
 import { configApi, githubAuthApi } from '../lib/api';
+import { useAuth } from './auth-provider';
 
 interface ConfigContextType {
   config: Config | null;
@@ -25,6 +26,7 @@ interface ConfigProviderProps {
 }
 
 export function ConfigProvider({ children }: ConfigProviderProps) {
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
@@ -44,9 +46,9 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
     loadConfig();
   }, []);
 
-  // Check GitHub token validity after config loads
+  // Check GitHub token validity only if user is authenticated
   useEffect(() => {
-    if (loading) return;
+    if (loading || authLoading || !isAuthenticated) return;
     const checkToken = async () => {
       const valid = await githubAuthApi.checkGithubToken();
       if (valid === undefined) {
@@ -56,7 +58,7 @@ export function ConfigProvider({ children }: ConfigProviderProps) {
       setGithubTokenInvalid(!valid);
     };
     checkToken();
-  }, [loading]);
+  }, [loading, authLoading, isAuthenticated]);
 
   const updateConfig = useCallback((updates: Partial<Config>) => {
     setConfig((prev) => (prev ? { ...prev, ...updates } : null));
