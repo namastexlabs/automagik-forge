@@ -45,20 +45,20 @@ echo "📦 Creating distribution package..."
 
 # Copy the main binary
 cp target/release/automagik-forge automagik-forge
-cp target/release/mcp_task_server automagik-forge-mcp
+cp target/release/mcp_task_server mcp_task_server
 
 zip automagik-forge.zip automagik-forge
-zip automagik-forge-mcp.zip automagik-forge-mcp
+zip mcp_task_server.zip mcp_task_server
 
-rm automagik-forge automagik-forge-mcp
+rm automagik-forge mcp_task_server
 
 mv automagik-forge.zip "npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
-mv automagik-forge-mcp.zip "npx-cli/dist/$PLATFORM_DIR/automagik-forge-mcp.zip"
+mv mcp_task_server.zip "npx-cli/dist/$PLATFORM_DIR/mcp_task_server.zip"
 
 echo "✅ NPM package ready for $PLATFORM_DIR!"
 echo "📁 Files created:"
 echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge.zip"
-echo "   - npx-cli/dist/$PLATFORM_DIR/automagik-forge-mcp.zip"
+echo "   - npx-cli/dist/$PLATFORM_DIR/mcp_task_server.zip"
 echo ""
 echo "🚨 IMPORTANT: This script only builds for the current platform ($PLATFORM_DIR)."
 echo "🚨           To support all platforms including macOS ARM64, use:"
