@@ -97,7 +97,7 @@ fn create_content_security_policy() -> String {
 
     let mut csp_directives = vec![
         "default-src 'self'".to_string(),
-        format!("connect-src 'self' {} https://api.github.com https://github.com wss: ws:", base_url),
+        format!("connect-src 'self' {} https://api.github.com https://github.com https://*.sentry.io wss: ws:", base_url),
         "font-src 'self' data: https://fonts.gstatic.com".to_string(),
         "img-src 'self' data: https: blob:".to_string(),
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com".to_string(),
