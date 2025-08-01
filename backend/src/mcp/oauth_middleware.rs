@@ -8,7 +8,7 @@ use axum::{
     body::Body,
 };
 use sqlx::SqlitePool;
-use chrono::{DateTime, Utc};
+use chrono;
 
 use crate::{
     auth::{validate_jwt_token, hash_token, JwtConfig},
@@ -21,6 +21,7 @@ use crate::{
 
 /// OAuth validation middleware for MCP SSE connections
 /// This middleware validates Bearer tokens and injects user context into requests
+#[allow(dead_code)] // OAuth middleware for future MCP SSE authentication
 pub async fn validate_oauth_token_middleware(
     State(token_store): State<Arc<RwLock<HashMap<String, McpToken>>>>,
     State(db_pool): State<SqlitePool>,
@@ -87,6 +88,7 @@ pub async fn validate_oauth_token_middleware(
 
 /// Enhanced OAuth middleware that also handles automatic browser opening workflow
 /// This is used by the SSE server to provide OAuth 2.1 authentication for external clients
+#[allow(dead_code)] // OAuth SSE middleware for future MCP authentication
 pub async fn oauth_sse_authentication_middleware(
     token_store: Arc<RwLock<HashMap<String, McpToken>>>,
     db_pool: SqlitePool,

@@ -189,7 +189,7 @@ async fn run_sse_server_authenticated(service: Arc<AuthenticatedTaskServer>, por
             let token_store = service.get_token_store();
             
             // Create OAuth middleware closure
-            let oauth_middleware = {
+            let _oauth_middleware = {
                 let token_store = token_store.clone();
                 let pool = pool.clone();
                 move |headers: axum::http::HeaderMap, req: axum::http::Request<axum::body::Body>, next: axum::middleware::Next| {
@@ -227,6 +227,7 @@ async fn run_sse_server_authenticated(service: Arc<AuthenticatedTaskServer>, por
 }
 
 // Legacy SSE server function for backward compatibility
+#[allow(dead_code)]
 async fn run_sse_server(service: Arc<TaskServer>, port: u16) -> anyhow::Result<()> {
     let bind_addr = SocketAddr::from(([0, 0, 0, 0], port));
     

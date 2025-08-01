@@ -7,7 +7,6 @@ use uuid::Uuid;
 
 use crate::{
     services::{generate_user_id, AnalyticsConfig, AnalyticsService, CollaborationService},
-    middleware::rate_limiter::RateLimiter,
     security::audit_logger::AuditLogger,
 };
 
@@ -33,7 +32,6 @@ pub struct AppState {
     config: Arc<tokio::sync::RwLock<crate::models::config::Config>>,
     pub analytics: Arc<TokioRwLock<AnalyticsService>>,
     pub collaboration: CollaborationService,
-    pub rate_limiter: RateLimiter,
     pub audit_logger: AuditLogger,
     user_id: String,
 }
@@ -55,9 +53,6 @@ impl AppState {
         // Initialize collaboration service
         let collaboration = CollaborationService::new();
 
-        // Initialize rate limiter
-        let rate_limiter = RateLimiter::new();
-
         // Initialize audit logger
         let audit_logger = AuditLogger::new(db_pool.clone());
 
@@ -67,7 +62,6 @@ impl AppState {
             config,
             analytics,
             collaboration,
-            rate_limiter,
             audit_logger,
             user_id: generate_user_id(),
         }
@@ -233,5 +227,10 @@ impl AppState {
         sentry::configure_scope(|scope| {
             scope.set_user(Some(sentry_user));
         });
+    }
+
+    /// Access to audit logger for security events
+    pub fn audit_logger(&self) -> &AuditLogger {
+        &self.audit_logger
     }
 }

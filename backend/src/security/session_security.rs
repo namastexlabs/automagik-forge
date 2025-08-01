@@ -1,7 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::collections::HashMap;
 use thiserror::Error;
 use tracing::{info, warn};
 use ts_rs::TS;
@@ -11,7 +10,6 @@ use uuid::Uuid;
 use crate::{
     auth::{generate_jwt_token, hash_token, JwtConfig},
     models::{
-        user::User,
         user_session::{SessionType, UserSession},
     },
     security::audit_logger::{AuditLogger, AuditResult, CreateAuditEvent, AuditEventType, AuditSeverity},

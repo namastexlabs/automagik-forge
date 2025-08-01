@@ -43,6 +43,7 @@ pub struct CreateUserSession {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct UpdateUserSession {
     pub expires_at: Option<DateTime<Utc>>,
     pub client_info: Option<String>,
@@ -80,6 +81,7 @@ impl UserSession {
     }
 
     /// Find all sessions for a user
+    #[allow(dead_code)]
     pub async fn find_by_user_id(pool: &SqlitePool, user_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             UserSession,
@@ -176,6 +178,7 @@ impl UserSession {
     }
 
     /// Update session
+    #[allow(dead_code)]
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
@@ -205,6 +208,7 @@ impl UserSession {
     }
 
     /// Extend session expiration
+    #[allow(dead_code)]
     pub async fn extend_expiration(
         pool: &SqlitePool,
         id: Uuid,
@@ -232,6 +236,7 @@ impl UserSession {
     }
 
     /// Delete session by token hash
+    #[allow(dead_code)]
     pub async fn delete_by_token_hash(pool: &SqlitePool, token_hash: &str) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM user_sessions WHERE token_hash = $1", token_hash)
             .execute(pool)
@@ -248,6 +253,7 @@ impl UserSession {
     }
 
     /// Clean up expired sessions
+    #[allow(dead_code)]
     pub async fn cleanup_expired(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
         let now = Utc::now();
         let result = sqlx::query!("DELETE FROM user_sessions WHERE expires_at <= $1", now)
@@ -257,16 +263,19 @@ impl UserSession {
     }
 
     /// Check if session is expired
+    #[allow(dead_code)]
     pub fn is_expired(&self) -> bool {
         self.expires_at <= Utc::now()
     }
 
     /// Check if session is valid (not expired)
+    #[allow(dead_code)]
     pub fn is_valid(&self) -> bool {
         !self.is_expired()
     }
 
     /// Get remaining session time
+    #[allow(dead_code)]
     pub fn time_remaining(&self) -> Option<Duration> {
         let now = Utc::now();
         if self.expires_at > now {
@@ -277,6 +286,7 @@ impl UserSession {
     }
 
     /// Count active sessions for user by type
+    #[allow(dead_code)]
     pub async fn count_active_by_user_and_type(
         pool: &SqlitePool,
         user_id: Uuid,
@@ -301,6 +311,7 @@ impl UserSession {
     }
 
     /// Get all active sessions (not expired)
+    #[allow(dead_code)]
     pub async fn find_all_active(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         let now = Utc::now();
         sqlx::query_as!(

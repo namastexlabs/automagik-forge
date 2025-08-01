@@ -21,6 +21,7 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct StreamQuery {
     /// Optional cursor to resume streaming from specific event
+    #[allow(dead_code)]
     since_event_id: Option<Uuid>,
 }
 

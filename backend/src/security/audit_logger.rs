@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use ts_rs::TS;
 use uuid::Uuid;
 use utoipa::ToSchema;
-use tracing::{error, info, warn};
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "audit_event_type", rename_all = "snake_case")]
@@ -18,10 +18,10 @@ pub enum AuditEventType {
     UserManagement,
     WhitelistChange,
     TokenAccess,
-    RateLimit,
     SecurityViolation,
     ConfigChange,
     DataAccess,
+    RateLimit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema, sqlx::Type)]
@@ -104,7 +104,6 @@ impl AuditLogger {
             AuditEventType::UserManagement => "user_management",
             AuditEventType::WhitelistChange => "whitelist_change",
             AuditEventType::TokenAccess => "token_access",
-            AuditEventType::RateLimit => "rate_limit",
             AuditEventType::SecurityViolation => "security_violation",
             AuditEventType::ConfigChange => "config_change",
             AuditEventType::DataAccess => "data_access",
@@ -162,7 +161,7 @@ impl AuditLogger {
         }
 
         // Also log to structured logging for immediate visibility
-        let log_level = match event.severity {
+        let _log_level = match event.severity {
             AuditSeverity::Critical => tracing::Level::ERROR,
             AuditSeverity::High => tracing::Level::WARN,
             AuditSeverity::Medium => tracing::Level::INFO,
@@ -344,31 +343,6 @@ impl AuditLogger {
         }).await
     }
 
-    /// Log rate limiting event
-    pub async fn log_rate_limit_violation(
-        &self,
-        user_id: Option<Uuid>,
-        ip_address: Option<String>,
-        user_agent: Option<String>,
-        endpoint: &str,
-        limit_type: &str,
-    ) -> Result<Uuid, sqlx::Error> {
-        let mut details = HashMap::new();
-        details.insert("limit_type".to_string(), serde_json::Value::String(limit_type.to_string()));
-        details.insert("endpoint".to_string(), serde_json::Value::String(endpoint.to_string()));
-
-        self.log_event(CreateAuditEvent {
-            event_type: AuditEventType::RateLimit,
-            user_id,
-            ip_address,
-            user_agent,
-            resource: "rate_limiter".to_string(),
-            action: "limit_exceeded".to_string(),
-            result: AuditResult::Blocked,
-            details: Some(serde_json::Value::Object(serde_json::Map::from_iter(details))),
-            severity: AuditSeverity::Medium,
-        }).await
-    }
 
     /// Log security violation
     pub async fn log_security_violation(
@@ -434,7 +408,6 @@ impl AuditLogger {
             AuditEventType::UserManagement => "user_management",
             AuditEventType::WhitelistChange => "whitelist_change",
             AuditEventType::TokenAccess => "token_access",
-            AuditEventType::RateLimit => "rate_limit",
             AuditEventType::SecurityViolation => "security_violation",
             AuditEventType::ConfigChange => "config_change",
             AuditEventType::DataAccess => "data_access",
@@ -529,7 +502,6 @@ impl AuditLogger {
             return Ok(AuditStatistics {
                 total_events: 0,
                 failed_auth_attempts: 0,
-                rate_limit_violations: 0,
                 security_violations: 0,
                 admin_actions: 0,
             });

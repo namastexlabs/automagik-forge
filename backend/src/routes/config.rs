@@ -4,7 +4,7 @@ use axum::{
     extract::{Query, State},
     response::Json as ResponseJson,
     routing::{get, post},
-    Extension, Json, Router,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,7 +14,6 @@ use utoipa::ToSchema;
 
 use crate::{
     app_state::AppState,
-    auth::UserContext,
     executor::ExecutorConfig,
     models::{
         config::{Config, EditorConstants, SoundConstants},

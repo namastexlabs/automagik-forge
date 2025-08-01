@@ -217,27 +217,6 @@ pub async fn security_context_middleware(
     response
 }
 
-/// Rate limiting headers middleware (to be used with rate limiter)
-pub fn add_rate_limit_headers(
-    response: &mut Response,
-    limit: u32,
-    remaining: u32,
-    reset_seconds: u64,
-) {
-    let headers = response.headers_mut();
-    
-    if let Ok(limit_value) = HeaderValue::from_str(&limit.to_string()) {
-        headers.insert("x-ratelimit-limit", limit_value);
-    }
-    
-    if let Ok(remaining_value) = HeaderValue::from_str(&remaining.to_string()) {
-        headers.insert("x-ratelimit-remaining", remaining_value);
-    }
-    
-    if let Ok(reset_value) = HeaderValue::from_str(&reset_seconds.to_string()) {
-        headers.insert("x-ratelimit-reset", reset_value);
-    }
-}
 
 /// Security monitoring middleware that logs suspicious requests
 pub async fn security_monitoring_middleware(

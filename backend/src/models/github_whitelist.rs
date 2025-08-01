@@ -22,6 +22,7 @@ pub struct GitHubWhitelist {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct CreateGitHubWhitelist {
     pub github_username: String,
     pub github_id: Option<i64>,
@@ -31,6 +32,7 @@ pub struct CreateGitHubWhitelist {
 
 #[derive(Debug, Deserialize, TS, ToSchema)]
 #[ts(export)]
+#[allow(dead_code)]
 pub struct UpdateGitHubWhitelist {
     pub github_username: Option<String>,
     pub github_id: Option<i64>,
@@ -40,6 +42,7 @@ pub struct UpdateGitHubWhitelist {
 
 impl GitHubWhitelist {
     /// Find all whitelist entries
+    #[allow(dead_code)]
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -59,6 +62,7 @@ impl GitHubWhitelist {
     }
 
     /// Find all active whitelist entries
+    #[allow(dead_code)]
     pub async fn find_all_active(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -79,6 +83,7 @@ impl GitHubWhitelist {
     }
 
     /// Find entry by ID
+    #[allow(dead_code)]
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -99,6 +104,7 @@ impl GitHubWhitelist {
     }
 
     /// Find entry by GitHub username
+    #[allow(dead_code)]
     pub async fn find_by_github_username(pool: &SqlitePool, github_username: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -119,6 +125,7 @@ impl GitHubWhitelist {
     }
 
     /// Find entry by GitHub ID
+    #[allow(dead_code)]
     pub async fn find_by_github_id(pool: &SqlitePool, github_id: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -139,6 +146,7 @@ impl GitHubWhitelist {
     }
 
     /// Check if GitHub username is whitelisted
+    #[allow(dead_code)]
     pub async fn is_username_whitelisted(pool: &SqlitePool, github_username: &str) -> Result<bool, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT is_active as "is_active!: bool" 
@@ -153,6 +161,7 @@ impl GitHubWhitelist {
     }
 
     /// Check if GitHub ID is whitelisted
+    #[allow(dead_code)]
     pub async fn is_github_id_whitelisted(pool: &SqlitePool, github_id: i64) -> Result<bool, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT is_active as "is_active!: bool" 
@@ -167,6 +176,7 @@ impl GitHubWhitelist {
     }
 
     /// Create a new whitelist entry
+    #[allow(dead_code)]
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateGitHubWhitelist,
@@ -195,6 +205,7 @@ impl GitHubWhitelist {
     }
 
     /// Update whitelist entry
+    #[allow(dead_code)]
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
@@ -228,6 +239,7 @@ impl GitHubWhitelist {
     }
 
     /// Activate whitelist entry
+    #[allow(dead_code)]
     pub async fn activate(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
         let data = UpdateGitHubWhitelist {
             github_username: None,
@@ -239,6 +251,7 @@ impl GitHubWhitelist {
     }
 
     /// Deactivate whitelist entry
+    #[allow(dead_code)]
     pub async fn deactivate(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
         let data = UpdateGitHubWhitelist {
             github_username: None,
@@ -250,6 +263,7 @@ impl GitHubWhitelist {
     }
 
     /// Delete whitelist entry
+    #[allow(dead_code)]
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_whitelist WHERE id = $1", id)
             .execute(pool)
@@ -258,6 +272,7 @@ impl GitHubWhitelist {
     }
 
     /// Add GitHub username to whitelist
+    #[allow(dead_code)]
     pub async fn add_username(
         pool: &SqlitePool,
         github_username: &str,
@@ -274,6 +289,7 @@ impl GitHubWhitelist {
     }
 
     /// Add GitHub ID to whitelist
+    #[allow(dead_code)]
     pub async fn add_github_id(
         pool: &SqlitePool,
         github_id: i64,
@@ -291,6 +307,7 @@ impl GitHubWhitelist {
     }
 
     /// Update GitHub ID for existing username entry
+    #[allow(dead_code)]
     pub async fn update_github_id_for_username(
         pool: &SqlitePool,
         github_username: &str,
@@ -311,6 +328,7 @@ impl GitHubWhitelist {
     }
 
     /// Get all entries invited by a specific user
+    #[allow(dead_code)]
     pub async fn find_by_inviter(pool: &SqlitePool, inviter_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubWhitelist,
@@ -332,6 +350,7 @@ impl GitHubWhitelist {
     }
 
     /// Count total whitelist entries
+    #[allow(dead_code)]
     pub async fn count_total(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT COUNT(*) as "count!: i64" FROM github_whitelist"#
@@ -342,6 +361,7 @@ impl GitHubWhitelist {
     }
 
     /// Count active whitelist entries
+    #[allow(dead_code)]
     pub async fn count_active(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT COUNT(*) as "count!: i64" FROM github_whitelist WHERE is_active = TRUE"#

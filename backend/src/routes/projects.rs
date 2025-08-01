@@ -407,6 +407,7 @@ pub async fn delete_project(
 
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
+    #[allow(dead_code)]
     editor_type: Option<String>,
 }
 
@@ -611,8 +612,6 @@ pub fn projects_base_router() -> Router<AppState> {
 }
 
 pub fn projects_with_id_router() -> Router<AppState> {
-    use axum::routing::post;
-
     Router::new()
         .route(
             "/projects/:id",

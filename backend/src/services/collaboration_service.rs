@@ -73,7 +73,7 @@ impl CollaborationService {
     /// Subscribe to all events for a user (across all projects they have access to)
     pub async fn subscribe_to_user_events(
         &self, 
-        user_id: Uuid
+        _user_id: Uuid
     ) -> impl Stream<Item = CollaborationEvent> {
         let receiver = self.event_sender.subscribe();
         

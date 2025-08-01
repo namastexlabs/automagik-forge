@@ -35,7 +35,9 @@ pub struct AuthorizeQuery {
     pub client_id: Option<String>,
     pub redirect_uri: Option<String>,
     pub response_type: Option<String>,
+    #[allow(dead_code)]
     pub scope: Option<String>,
+    #[allow(dead_code)]
     pub state: Option<String>,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<String>,
@@ -54,6 +56,7 @@ pub struct TokenRequest {
     pub grant_type: String,
     pub code: Option<String>,
     pub redirect_uri: Option<String>,
+    #[allow(dead_code)]
     pub client_id: Option<String>,
     pub code_verifier: Option<String>,
 }
@@ -89,12 +92,15 @@ struct OAuthState {
     pub client_id: String,
     pub redirect_uri: String,
     pub code_challenge: Option<String>,
+    #[allow(dead_code)]
     pub code_challenge_method: Option<String>,
+    #[allow(dead_code)]
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone)]
 struct AuthCode {
+    #[allow(dead_code)]
     pub code: String,
     pub user_id: Uuid,
     pub client_id: String,

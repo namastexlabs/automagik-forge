@@ -1,8 +1,7 @@
-use std::env;
 use uuid::Uuid;
 use automagik_forge::{
     models::{
-        collaboration::{PresenceStatus, PublicUser},
+        collaboration::PresenceStatus,
         user::User,
     },
     services::CollaborationService,

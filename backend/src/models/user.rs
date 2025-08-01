@@ -53,6 +53,7 @@ pub struct UpdateUser {
 
 impl User {
     /// Find all users
+    #[allow(dead_code)]
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             User,
@@ -127,6 +128,7 @@ impl User {
     }
 
     /// Find user by username
+    #[allow(dead_code)]
     pub async fn find_by_username(pool: &SqlitePool, username: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             User,
@@ -248,6 +250,7 @@ impl User {
     }
 
     /// Delete user
+    #[allow(dead_code)]
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM users WHERE id = $1", id)
             .execute(pool)
@@ -256,6 +259,7 @@ impl User {
     }
 
     /// Check if user exists
+    #[allow(dead_code)]
     pub async fn exists(pool: &SqlitePool, id: Uuid) -> Result<bool, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT COUNT(*) as "count!: i64" FROM users WHERE id = $1"#,
@@ -292,6 +296,7 @@ impl User {
     }
 
     /// Check if username is whitelisted
+    #[allow(dead_code)]
     pub async fn is_github_username_whitelisted(pool: &SqlitePool, username: &str) -> Result<bool, sqlx::Error> {
         // Check if user exists and is whitelisted
         let user_result = sqlx::query!(
@@ -317,6 +322,7 @@ impl User {
     }
 
     /// Get all admin users
+    #[allow(dead_code)]
     pub async fn find_admins(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             User,
@@ -342,6 +348,7 @@ impl User {
     }
 
     /// Get the first admin user (for fallback admin assignment)
+    #[allow(dead_code)]
     pub async fn get_first_admin(pool: &SqlitePool) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             User,

@@ -7,6 +7,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use thiserror::Error;
 use zeroize::Zeroize;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum TokenEncryptionError {
     #[error("Failed to encrypt token: {0}")]
@@ -20,6 +21,7 @@ pub enum TokenEncryptionError {
 }
 
 /// Token encryption service for securing sensitive tokens in database
+#[allow(dead_code)]
 pub struct TokenEncryption {
     cipher: Aes256Gcm,
 }
@@ -28,6 +30,7 @@ impl TokenEncryption {
     /// Create new token encryption service
     /// Uses GITHUB_TOKEN_ENCRYPTION_KEY environment variable for key
     /// Falls back to generating a key from JWT_SECRET if not set (not recommended for production)
+    #[allow(dead_code)]
     pub fn new() -> Result<Self, TokenEncryptionError> {
         let key = Self::get_encryption_key()?;
         let cipher = Aes256Gcm::new(&key);
@@ -35,6 +38,7 @@ impl TokenEncryption {
     }
 
     /// Get encryption key from environment
+    #[allow(dead_code)]
     fn get_encryption_key() -> Result<Key<Aes256Gcm>, TokenEncryptionError> {
         // Try to get dedicated encryption key first
         if let Ok(key_base64) = env::var("GITHUB_TOKEN_ENCRYPTION_KEY") {

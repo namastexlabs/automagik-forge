@@ -211,15 +211,22 @@ pub struct TaskServer {
 
 // Simple token store for MCP OAuth tokens (can be enhanced with rmcp auth later)
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // OAuth token storage for future MCP authentication
 pub struct McpToken {
+    #[allow(dead_code)]
     pub user_id: Uuid,
+    #[allow(dead_code)]
     pub scopes: Vec<String>,
+    #[allow(dead_code)]
     pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // OAuth-enabled MCP server for future authentication
 pub struct AuthenticatedTaskServer {
+    #[allow(dead_code)]
     pub pool: SqlitePool,
+    #[allow(dead_code)]
     pub token_store: Arc<RwLock<HashMap<String, McpToken>>>,
     tool_router: ToolRouter<AuthenticatedTaskServer>,
 }
@@ -244,6 +251,7 @@ impl TaskServer {
 }
 
 impl AuthenticatedTaskServer {
+    #[allow(dead_code)] // Constructor for OAuth-enabled MCP server
     pub fn new(pool: SqlitePool) -> Self {
         Self {
             pool,
@@ -253,6 +261,7 @@ impl AuthenticatedTaskServer {
     }
 
     /// Extract user context from OAuth-authenticated MCP request
+    #[allow(dead_code)] // OAuth user context extraction for future MCP authentication
     pub async fn get_user_context(&self, bearer_token: Option<&str>) -> Option<(User, UserSession)> {
         let token = bearer_token?;
         
@@ -290,6 +299,7 @@ impl AuthenticatedTaskServer {
     }
 
     /// Store OAuth access token with user context
+    #[allow(dead_code)] // OAuth token storage for future MCP authentication
     pub async fn store_oauth_token(&self, token: &str, user_id: Uuid, scopes: Vec<String>) {
         let mut store = self.token_store.write().await;
         let mcp_token = McpToken {
@@ -301,6 +311,7 @@ impl AuthenticatedTaskServer {
     }
 
     /// Get token store for external middleware use
+    #[allow(dead_code)] // Token store access for middleware
     pub fn get_token_store(&self) -> Arc<RwLock<HashMap<String, McpToken>>> {
         self.token_store.clone()
     }

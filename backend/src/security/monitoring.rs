@@ -1,18 +1,15 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::collections::HashMap;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
 use ts_rs::TS;
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 use crate::{
-    models::user_session::UserSession,
     security::{
         audit_logger::{AuditLogger, AuditResult, AuditSeverity},
-        session_security::{SessionSecurity, SecurityAlert, SecurityAlertType},
+        session_security::{SessionSecurity, SecurityAlert},
     },
 };
 
@@ -29,8 +26,6 @@ pub struct SecurityMonitorConfig {
     pub monitor_interval_seconds: u64,
     pub max_failed_auth_attempts: u32,
     pub failed_auth_window_minutes: u32,
-    pub max_rate_limit_violations: u32,
-    pub rate_limit_window_minutes: u32,
     pub alert_email: Option<String>,
     pub enable_auto_response: bool,
 }
@@ -41,8 +36,6 @@ impl Default for SecurityMonitorConfig {
             monitor_interval_seconds: 300, // 5 minutes
             max_failed_auth_attempts: 5,
             failed_auth_window_minutes: 15,
-            max_rate_limit_violations: 10,
-            rate_limit_window_minutes: 10,
             alert_email: None,
             enable_auto_response: true,
         }
@@ -57,7 +50,6 @@ pub struct SecurityMetrics {
     pub timestamp: DateTime<Utc>,
     pub active_sessions: u64,
     pub failed_auth_attempts_last_hour: u64,
-    pub rate_limit_violations_last_hour: u64,
     pub security_events_last_hour: u64,
     pub suspicious_activities: Vec<SecurityAlert>,
     pub system_health: SystemHealth,
@@ -68,7 +60,6 @@ pub struct SecurityMetrics {
 pub struct SystemHealth {
     pub database_status: HealthStatus,
     pub authentication_status: HealthStatus,
-    pub rate_limiter_status: HealthStatus,
     pub audit_system_status: HealthStatus,
     pub overall_status: HealthStatus,
 }
@@ -169,18 +160,10 @@ impl SecurityMonitor {
         .await?
         .is_some();
 
-        let (failed_auth_attempts, rate_limit_violations, security_events) = if table_exists {
+        let (failed_auth_attempts, security_events) = if table_exists {
             // Get failed authentication attempts in last hour
             let failed_auth_attempts = sqlx::query_scalar::<_, i64>(
                 "SELECT COUNT(*) FROM audit_log WHERE event_type = 'authentication' AND result = 'failure' AND timestamp >= ?1"
-            )
-            .bind(one_hour_ago)
-            .fetch_one(&self.db_pool)
-            .await? as u64;
-
-            // Get rate limit violations in last hour
-            let rate_limit_violations = sqlx::query_scalar::<_, i64>(
-                "SELECT COUNT(*) FROM audit_log WHERE event_type = 'rate_limit' AND timestamp >= ?1"
             )
             .bind(one_hour_ago)
             .fetch_one(&self.db_pool)
@@ -194,9 +177,9 @@ impl SecurityMonitor {
             .fetch_one(&self.db_pool)
             .await? as u64;
 
-            (failed_auth_attempts, rate_limit_violations, security_events)
+            (failed_auth_attempts, security_events)
         } else {
-            (0u64, 0u64, 0u64)
+            (0u64, 0u64)
         };
 
         // Collect suspicious activities (this is a simplified version)
@@ -209,7 +192,6 @@ impl SecurityMonitor {
             timestamp: now,
             active_sessions,
             failed_auth_attempts_last_hour: failed_auth_attempts,
-            rate_limit_violations_last_hour: rate_limit_violations,
             security_events_last_hour: security_events,
             suspicious_activities,
             system_health,
@@ -235,21 +217,6 @@ impl SecurityMonitor {
                 ),
                 affected_resource: "authentication".to_string(),
                 recommended_action: "Review authentication logs and consider IP blocking".to_string(),
-            });
-        }
-
-        // Check for excessive rate limiting violations
-        if metrics.rate_limit_violations_last_hour > self.config.max_rate_limit_violations as u64 {
-            threats.push(SecurityThreat {
-                threat_type: ThreatType::ExcessiveRateLimiting,
-                severity: ThreatSeverity::Medium,
-                description: format!(
-                    "Detected {} rate limit violations in the last hour (threshold: {})",
-                    metrics.rate_limit_violations_last_hour,
-                    self.config.max_rate_limit_violations
-                ),
-                affected_resource: "rate_limiter".to_string(),
-                recommended_action: "Review rate limiting configuration and client behavior".to_string(),
             });
         }
 
@@ -387,9 +354,6 @@ impl SecurityMonitor {
             HealthStatus::Critical
         };
 
-        // Check rate limiter health (simplified - would check Redis if using distributed rate limiting)
-        let rate_limiter_status = HealthStatus::Healthy;
-
         // Check audit system health
         let audit_system_status = match self.audit_logger.get_audit_statistics(1).await {
             Ok(_) => HealthStatus::Healthy,
@@ -400,19 +364,17 @@ impl SecurityMonitor {
         let overall_status = match (
             &database_status,
             &authentication_status,
-            &rate_limiter_status,
             &audit_system_status,
         ) {
-            (HealthStatus::Critical, _, _, _) | (_, HealthStatus::Critical, _, _) => HealthStatus::Critical,
-            (HealthStatus::Warning, _, _, _) | (_, _, _, HealthStatus::Warning) => HealthStatus::Warning,
-            (HealthStatus::Healthy, HealthStatus::Healthy, HealthStatus::Healthy, HealthStatus::Healthy) => HealthStatus::Healthy,
+            (HealthStatus::Critical, _, _) | (_, HealthStatus::Critical, _) => HealthStatus::Critical,
+            (HealthStatus::Warning, _, _) | (_, _, HealthStatus::Warning) => HealthStatus::Warning,
+            (HealthStatus::Healthy, HealthStatus::Healthy, HealthStatus::Healthy) => HealthStatus::Healthy,
             _ => HealthStatus::Unknown,
         };
 
         Ok(SystemHealth {
             database_status,
             authentication_status,
-            rate_limiter_status,
             audit_system_status,
             overall_status,
         })
@@ -479,7 +441,6 @@ mod tests {
         let health = SystemHealth {
             database_status: HealthStatus::Healthy,
             authentication_status: HealthStatus::Healthy,
-            rate_limiter_status: HealthStatus::Healthy,
             audit_system_status: HealthStatus::Healthy,
             overall_status: HealthStatus::Healthy,
         };

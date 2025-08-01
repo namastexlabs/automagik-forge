@@ -3,7 +3,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utoipa::{self, ToSchema};
-use uuid::Uuid;
 
 use crate::{
     app_state::AppState,
@@ -21,7 +20,6 @@ pub struct HealthCheckResponse {
     pub version: String,
     pub uptime_seconds: u64,
     pub active_sessions: u64,
-    pub rate_limit_status: String,
     
     #[ts(type = "Date")]
     #[schema(value_type = String, format = DateTime)]
@@ -58,7 +56,7 @@ pub async fn health_check(
     State(app_state): State<AppState>,
 ) -> Json<ApiResponse<HealthCheckResponse>> {
     // Start time for uptime calculation (simplified - would use actual start time in production)
-    let start_time = std::time::SystemTime::now()
+    let _start_time = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
@@ -89,7 +87,6 @@ pub async fn health_check(
         version: env!("CARGO_PKG_VERSION").to_string(),
         uptime_seconds,
         active_sessions,
-        rate_limit_status: "normal".to_string(), // Simplified check
         timestamp: Utc::now(),
     };
 
@@ -112,7 +109,7 @@ pub async fn detailed_health_check(
     State(app_state): State<AppState>,
 ) -> Json<ApiResponse<DetailedHealthResponse>> {
     // Get basic health first
-    let basic_health_response = health_check(State(app_state.clone())).await;
+    let _basic_health_response = health_check(State(app_state.clone())).await;
     // We don't need to extract the inner response, just reconstruct the health data
     
     // For now, we'll reconstruct the health data since the API response fields are private
@@ -139,7 +136,6 @@ pub async fn detailed_health_check(
             Ok(result) => result.count as u64,
             Err(_) => 0,
         },
-        rate_limit_status: "normal".to_string(),
         timestamp: Utc::now(),
     };
 
@@ -175,7 +171,7 @@ pub async fn security_health_check(
 ) -> Json<ApiResponse<SecurityMetrics>> {
     // Get security metrics from audit logger
     let now = Utc::now();
-    let one_hour_ago = now - chrono::Duration::hours(1);
+    let _one_hour_ago = now - chrono::Duration::hours(1);
 
     // Collect security metrics
     let active_sessions = match sqlx::query!(
@@ -189,7 +185,6 @@ pub async fn security_health_check(
     // For now, set security metrics to 0 since audit_log table may not exist
     // In production, these would be properly monitored via the audit system
     let failed_auth_attempts = 0u64;
-    let rate_limit_violations = 0u64;
     let security_events = 0u64;
 
     // Create simplified system health
@@ -198,7 +193,6 @@ pub async fn security_health_check(
     let system_health = crate::security::monitoring::SystemHealth {
         database_status: if database_healthy { HealthStatus::Healthy } else { HealthStatus::Critical },
         authentication_status: if database_healthy { HealthStatus::Healthy } else { HealthStatus::Critical },
-        rate_limiter_status: HealthStatus::Healthy,
         audit_system_status: if database_healthy { HealthStatus::Healthy } else { HealthStatus::Warning },
         overall_status: if database_healthy { HealthStatus::Healthy } else { HealthStatus::Critical },
     };
@@ -207,7 +201,6 @@ pub async fn security_health_check(
         timestamp: now,
         active_sessions,
         failed_auth_attempts_last_hour: failed_auth_attempts,
-        rate_limit_violations_last_hour: rate_limit_violations,
         security_events_last_hour: security_events,
         suspicious_activities: Vec::new(), // Simplified
         system_health,

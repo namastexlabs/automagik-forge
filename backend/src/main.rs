@@ -12,7 +12,6 @@ use sentry_tower::NewSentryLayer;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use strip_ansi_escapes::strip;
 use tokio::sync::RwLock;
-use tower_http::cors::CorsLayer;
 use tracing_subscriber::{filter::LevelFilter, prelude::*};
 use automagik_forge::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
@@ -34,7 +33,6 @@ use execution_monitor::execution_monitor;
 use middleware::{
     load_execution_process_simple_middleware, load_project_middleware,
     load_task_attempt_middleware, load_task_middleware, load_task_template_middleware,
-    rate_limit_middleware, auth_rate_limit_middleware, admin_rate_limit_middleware,
 };
 use security::{
     security_headers_middleware, security_monitoring_middleware, create_secure_cors_layer,
@@ -222,10 +220,8 @@ fn main() -> anyhow::Result<()> {
                     Router::new()
                         .route("/api/auth/github/device/start", post(routes_auth::device_start))
                         .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
-                        .layer(from_fn_with_state(app_state.clone(), auth_rate_limit_middleware))
                 )
-                .merge(oauth::oauth_router())
-                .layer(from_fn_with_state(app_state.clone(), rate_limit_middleware));
+                .merge(oauth::oauth_router());
 
             // Protected routes (require authentication)
             let protected_routes = Router::new()

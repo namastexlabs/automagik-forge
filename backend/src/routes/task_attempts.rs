@@ -506,6 +506,7 @@ pub async fn create_github_pr(
 
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
+    #[allow(dead_code)]
     editor_type: Option<String>,
 }
 

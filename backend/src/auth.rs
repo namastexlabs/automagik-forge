@@ -193,6 +193,7 @@ pub async fn auth_middleware(
 }
 
 /// Optional authentication middleware (doesn't fail on missing auth)
+#[allow(dead_code)] // Planned for future API endpoints that don't require auth
 pub async fn optional_auth_middleware(
     State(app_state): State<AppState>,
     mut req: Request,
@@ -247,6 +248,7 @@ pub fn get_current_user(req: &Request) -> Option<&User> {
 }
 
 /// Extract session from request (convenience function)
+#[allow(dead_code)] // Utility function for handlers that need session info
 pub fn get_current_session(req: &Request) -> Option<&UserSession> {
     get_user_context(req).map(|ctx| &ctx.session)
 }

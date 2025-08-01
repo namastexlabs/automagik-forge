@@ -19,6 +19,7 @@ use crate::{
 };
 use crate::auth::{generate_jwt_token, hash_token, JwtConfig, get_current_user, get_user_context};
 
+#[allow(dead_code)] // Auth router for future authentication endpoints
 pub fn auth_router() -> Router<AppState> {
     Router::new()
         .route("/auth/github/device/start", post(device_start))
