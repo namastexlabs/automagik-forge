@@ -34,6 +34,10 @@ use execution_monitor::execution_monitor;
 use middleware::{
     load_execution_process_simple_middleware, load_project_middleware,
     load_task_attempt_middleware, load_task_middleware, load_task_template_middleware,
+    rate_limit_middleware, auth_rate_limit_middleware, admin_rate_limit_middleware,
+};
+use security::{
+    security_headers_middleware, security_monitoring_middleware, create_secure_cors_layer,
 };
 use models::{ApiResponse, Config};
 use routes::{
@@ -214,9 +218,14 @@ fn main() -> anyhow::Result<()> {
             let public_routes = Router::new()
                 .route("/api/health", get(health::health_check))
                 .route("/api/echo", post(echo_handler))
-                .route("/api/auth/github/device/start", post(routes_auth::device_start))
-                .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
-                .merge(oauth::oauth_router());
+                .merge(
+                    Router::new()
+                        .route("/api/auth/github/device/start", post(routes_auth::device_start))
+                        .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
+                        .layer(from_fn_with_state(app_state.clone(), auth_rate_limit_middleware))
+                )
+                .merge(oauth::oauth_router())
+                .layer(from_fn_with_state(app_state.clone(), rate_limit_middleware));
 
             // Protected routes (require authentication)
             let protected_routes = Router::new()
@@ -229,6 +238,9 @@ fn main() -> anyhow::Result<()> {
                 .route("/auth/logout", post(routes_auth::logout))
                 .route("/auth/logout-all", post(routes_auth::logout_all))
                 .route("/sounds/:filename", get(serve_sound_file))
+                // Enhanced health check endpoints
+                .route("/health/detailed", get(health::detailed_health_check))
+                .route("/health/security", get(health::security_health_check))
                 .merge(
                     Router::new()
                         .route("/execution-processes/:process_id", get(task_attempts::get_execution_process))
@@ -300,7 +312,10 @@ fn main() -> anyhow::Result<()> {
                 .route("/", get(index_handler))
                 .route("/*path", get(static_handler))
                 .with_state(app_state)
-                .layer(CorsLayer::permissive())
+                // Security middleware layers (order matters - applied in reverse)
+                .layer(axum::middleware::from_fn(security_headers_middleware))
+                .layer(axum::middleware::from_fn(security_monitoring_middleware))
+                .layer(create_secure_cors_layer())
                 .layer(NewSentryLayer::new_from_top());
 
             let port = std::env::var("BACKEND_PORT")

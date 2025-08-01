@@ -64,6 +64,10 @@ utoipa-swagger-ui = { version = "8.0.0", features = ["axum"] }
 jsonwebtoken = "9.3"
 sha2 = "0.10"
 base64 = "0.22"
+aes-gcm = "0.10"
+ring = "0.17"
+thiserror = "2.0"
+zeroize = "1.8"
 
 [dev-dependencies]
 tempfile = "3.8"
