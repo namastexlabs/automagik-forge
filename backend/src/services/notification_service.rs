@@ -1,12 +1,15 @@
 use std::sync::OnceLock;
 
 use crate::models::config::SoundFile;
+use crate::services::{WhatsAppConfig, WhatsAppNotifier};
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct NotificationService {
     sound_enabled: bool,
     push_enabled: bool,
+    whatsapp_enabled: bool,
+    whatsapp_notifier: Option<WhatsAppNotifier>,
 }
 
 /// Configuration for notifications
@@ -14,6 +17,7 @@ pub struct NotificationService {
 pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
+    pub whatsapp_enabled: bool,
 }
 
 impl Default for NotificationConfig {
@@ -21,6 +25,7 @@ impl Default for NotificationConfig {
         Self {
             sound_enabled: true,
             push_enabled: true,
+            whatsapp_enabled: true,
         }
     }
 }
@@ -30,14 +35,36 @@ static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 impl NotificationService {
     /// Create a new NotificationService with the given configuration
-    pub fn new(config: NotificationConfig) -> Self {
+    pub async fn new(config: NotificationConfig) -> Self {
+        let whatsapp_notifier = if config.whatsapp_enabled {
+            match WhatsAppConfig::from_env() {
+                Ok(whatsapp_config) => {
+                    match WhatsAppNotifier::new(whatsapp_config).await {
+                        Ok(notifier) => Some(notifier),
+                        Err(e) => {
+                            tracing::warn!("Failed to initialize WhatsApp notifier: {}. WhatsApp notifications disabled.", e);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("WhatsApp configuration not available: {}. WhatsApp notifications disabled.", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         Self {
             sound_enabled: config.sound_enabled,
             push_enabled: config.push_enabled,
+            whatsapp_enabled: config.whatsapp_enabled && whatsapp_notifier.is_some(),
+            whatsapp_notifier,
         }
     }
 
-    /// Send both sound and push notifications if enabled
+    /// Send sound, push, and WhatsApp notifications if enabled
     pub async fn notify(&self, title: &str, message: &str, sound_file: &SoundFile) {
         if self.sound_enabled {
             self.play_sound_notification(sound_file).await;
@@ -45,6 +72,14 @@ impl NotificationService {
 
         if self.push_enabled {
             self.send_push_notification(title, message).await;
+        }
+
+        if self.whatsapp_enabled {
+            if let Some(ref whatsapp_notifier) = self.whatsapp_notifier {
+                if let Err(e) = whatsapp_notifier.send_notification(title, message).await {
+                    tracing::error!("Failed to send WhatsApp notification: {}", e);
+                }
+            }
         }
     }
 

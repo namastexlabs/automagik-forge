@@ -10,14 +10,24 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
-    app_state::AppState, 
+    app_state::AppState,
     models::{
         ApiResponse,
         user::{User, CreateUser},
         user_session::{SessionType, UserSession},
     },
 };
+use super::super::app_config::AppConfig;
 use crate::auth::{generate_jwt_token, hash_token, JwtConfig, get_current_user, get_user_context};
+
+/// Get GitHub client ID from configuration with hardcoded default
+fn get_github_client_id() -> String {
+    let config = AppConfig::load().unwrap_or_default();
+    
+    config.github_client_id
+        .filter(|id| !id.is_empty())
+        .unwrap_or_else(|| "Ov23li2nd1KF5nCPbgoj".to_string())
+}
 
 #[allow(dead_code)] // Auth router for future authentication endpoints
 pub fn auth_router() -> Router<AppState> {
@@ -76,15 +86,7 @@ pub struct UserInfoResponse {
     )
 )]
 pub async fn device_start() -> ResponseJson<ApiResponse<DeviceStartResponse>> {
-    let client_id = match std::env::var("GITHUB_CLIENT_ID") {
-        Ok(id) if !id.is_empty() => id,
-        _ => {
-            tracing::error!("GITHUB_CLIENT_ID environment variable not configured");
-            return ResponseJson(ApiResponse::error(
-                "GitHub authentication not properly configured",
-            ));
-        }
-    };
+    let client_id = get_github_client_id();
 
     let params = [("client_id", client_id.as_str()), ("scope", "user:email,repo")];
     let client = reqwest::Client::new();
@@ -153,15 +155,7 @@ pub async fn device_poll(
     State(app_state): State<AppState>,
     Json(payload): Json<DevicePollRequest>,
 ) -> ResponseJson<ApiResponse<AuthResponse>> {
-    let client_id = match std::env::var("GITHUB_CLIENT_ID") {
-        Ok(id) if !id.is_empty() => id,
-        _ => {
-            tracing::error!("GITHUB_CLIENT_ID environment variable not configured");
-            return ResponseJson(ApiResponse::error(
-                "GitHub authentication not properly configured",
-            ));
-        }
-    };
+    let client_id = get_github_client_id();
 
     let params = [
         ("client_id", client_id.as_str()),

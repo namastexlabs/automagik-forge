@@ -173,11 +173,6 @@ impl AppState {
         config.sound_alerts
     }
 
-    pub async fn get_notification_settings(&self) -> crate::models::config::NotificationSettings {
-        let config = self.config.read().await;
-        config.notifications.clone()
-    }
-
     pub async fn get_desktop_notifications_enabled(&self) -> bool {
         let config = self.config.read().await;
         config.notifications.desktop

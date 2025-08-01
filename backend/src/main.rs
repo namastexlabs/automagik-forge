@@ -17,6 +17,7 @@ use automagik_forge::{sentry_layer, Assets, ScriptAssets, SoundAssets};
 
 mod app_state;
 mod auth;
+mod app_config;
 mod execution_monitor;
 mod executor;
 mod executors;
@@ -39,7 +40,7 @@ use security::{
 };
 use models::{ApiResponse, Config};
 use routes::{
-    auth as routes_auth, config, filesystem, health, oauth, projects, task_attempts, task_templates, tasks,
+    auth as routes_auth, config as routes_config, filesystem, health, oauth, projects, task_attempts, task_templates, tasks,
 };
 use services::PrMonitorService;
 use utoipa::OpenApi;
@@ -54,7 +55,7 @@ async fn echo_handler(
     ResponseJson(ApiResponse::success(payload))
 }
 
-async fn static_handler(uri: axum::extract::Path<String>) -> impl IntoResponse {
+async fn static_handler(uri: axum::extract::Path<String>) -> Response<Body> {
     let path = uri.trim_start_matches('/');
     
     // Validate path to prevent directory traversal attacks
@@ -72,7 +73,7 @@ async fn static_handler(uri: axum::extract::Path<String>) -> impl IntoResponse {
         return response;
     }
     
-    serve_file(path).await
+    serve_file(path).await.into_response()
 }
 
 fn is_safe_path(path: &str) -> bool {
@@ -272,7 +273,7 @@ fn main() -> anyhow::Result<()> {
                         .route("/api/auth/github/device/start", post(routes_auth::device_start))
                         .route("/api/auth/github/device/poll", post(routes_auth::device_poll))
                 )
-                .nest("/api", config::config_router())
+                .nest("/api", routes_config::config_router())
                 .merge(oauth::oauth_router());
 
             // Protected routes (require authentication)

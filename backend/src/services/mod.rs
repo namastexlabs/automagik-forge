@@ -13,7 +13,5 @@ pub use github_service::{CreatePrRequest, GitHubRepoInfo, GitHubService, GitHubS
 pub use notification_service::{NotificationConfig, NotificationService};
 pub use pr_monitor::PrMonitorService;
 pub use process_service::ProcessService;
-// WhatsApp integration - currently only used in test binary
-// Uncomment when integrating into main application:
-// pub use whatsapp_config::WhatsAppConfig;
-// pub use whatsapp_notifier::{WhatsAppNotifier, test_whatsapp_notification};
+pub use whatsapp_config::WhatsAppConfig;
+pub use whatsapp_notifier::WhatsAppNotifier;

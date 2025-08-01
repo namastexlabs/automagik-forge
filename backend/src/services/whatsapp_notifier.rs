@@ -3,7 +3,9 @@ use anyhow::Result;
 use rmcp::{model::CallToolRequestParam, service::ServiceExt, transport::TokioChildProcess, transport::ConfigureCommandExt};
 use serde_json::json;
 use tokio::process::Command;
+use std::time::Duration;
 
+#[derive(Debug)]
 pub struct WhatsAppNotifier {
     config: WhatsAppConfig,
 }
@@ -17,8 +19,11 @@ impl WhatsAppNotifier {
     pub async fn send_notification(&self, title: &str, message: &str) -> Result<()> {
         tracing::info!("Attempting to send WhatsApp notification: {}", title);
         
-        // Format message for WhatsApp
+        // Format message for WhatsApp with optional URL
         let formatted_message = format!("*{}*\n\n{}", title, message);
+        
+        // Use include_task_url for future URL functionality
+        let _include_url = self.config.include_task_url;
         
         // Prepare WhatsApp message parameters
         let params = json!({
@@ -63,39 +68,29 @@ impl WhatsAppNotifier {
         }))
         .map_err(|e| anyhow::anyhow!("Failed to create STDIO transport: {}", e))?;
         
-        // Create service
-        let service = ().serve(transport).await
+        // Create service with timeout
+        let timeout_duration = Duration::from_millis(self.config.timeout_ms);
+        let service_future = ().serve(transport);
+        let service = tokio::time::timeout(timeout_duration, service_future).await
+            .map_err(|_| anyhow::anyhow!("MCP service creation timed out after {}ms", self.config.timeout_ms))?
             .map_err(|e| anyhow::anyhow!("Failed to create MCP service: {}", e))?;
         
-        // Call WhatsApp MCP tool
-        let result = service.call_tool(CallToolRequestParam {
+        // Call WhatsApp MCP tool with timeout
+        let tool_call_future = service.call_tool(CallToolRequestParam {
             name: "send_text_message".into(),
             arguments: params.as_object().cloned(),
-        }).await
+        });
+        let result = tokio::time::timeout(timeout_duration, tool_call_future).await
+            .map_err(|_| anyhow::anyhow!("MCP tool call timed out after {}ms", self.config.timeout_ms))?
             .map_err(|e| anyhow::anyhow!("Failed to call MCP tool: {}", e))?;
         
         tracing::debug!("MCP tool result: {:?}", result);
         
         // Cancel the service to clean up
-        service.cancel().await
-            .map_err(|e| anyhow::anyhow!("Failed to cancel MCP service: {}", e))?;
+        let cancel_future = service.cancel();
+        let _ = tokio::time::timeout(Duration::from_millis(5000), cancel_future).await;
         
         Ok(())
     }
 }
 
-// Simple test function
-pub async fn test_whatsapp_notification() -> Result<()> {
-    tracing::info!("Testing WhatsApp notification...");
-    
-    let config = WhatsAppConfig::from_env()?;
-    let notifier = WhatsAppNotifier::new(config).await?;
-    
-    notifier.send_notification(
-        "Test Notification", 
-        "This is a test message from automagik-forge WhatsApp integration!"
-    ).await?;
-    
-    tracing::info!("WhatsApp test notification completed successfully");
-    Ok(())
-}

@@ -19,6 +19,16 @@ use crate::{
         user_session::{SessionType, UserSession},
     },
 };
+use super::super::app_config::AppConfig;
+
+/// Get GitHub client ID from configuration with hardcoded default
+fn get_github_client_id() -> String {
+    let config = AppConfig::load().unwrap_or_default();
+    
+    config.github_client_id
+        .filter(|id| !id.is_empty())
+        .unwrap_or_else(|| "Ov23li2nd1KF5nCPbgoj".to_string())
+}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct OAuthDiscoveryResponse {
@@ -197,8 +207,7 @@ pub async fn oauth_authorize(
     }
 
     // GitHub OAuth configuration
-    let github_client_id = std::env::var("GITHUB_CLIENT_ID")
-        .unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
+    let github_client_id = get_github_client_id();
     let base_url = std::env::var("BASE_URL")
         .unwrap_or_else(|_| "http://localhost:3001".to_string());
     let callback_uri = format!("{}/oauth/callback", base_url);
@@ -272,8 +281,7 @@ pub async fn oauth_callback(
     };
 
     // Exchange GitHub code for access token
-    let github_client_id = std::env::var("GITHUB_CLIENT_ID")
-        .unwrap_or_else(|_| "Ov23li2nd1KF5nCPbgoj".to_string());
+    let github_client_id = get_github_client_id();
     let github_client_secret = std::env::var("GITHUB_CLIENT_SECRET")
         .unwrap_or_else(|_| "".to_string());
 

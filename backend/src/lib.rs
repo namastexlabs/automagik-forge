@@ -4,6 +4,7 @@ use tracing::Level;
 
 pub mod app_state;
 pub mod auth;
+pub mod app_config;
 pub mod execution_monitor;
 pub mod executor;
 pub mod executors;
