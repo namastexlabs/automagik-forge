@@ -8,6 +8,7 @@ interface CollaborationContextType {
   isConnected: boolean;
   isConnecting: boolean;
   connectionError: string | null;
+  isOnline: boolean;
   
   // Presence data
   currentPresence: UserPresence[];
@@ -22,6 +23,7 @@ interface CollaborationContextType {
   disconnect: () => Promise<void>;
   updatePresence: (status: PresenceStatus) => Promise<void>;
   clearEvents: () => void;
+  retry: () => Promise<void>;
   
   // Event subscription
   subscribeToEvents: (handler: (event: CollaborationEvent) => void) => () => void;
@@ -48,6 +50,7 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   // Presence state
   const [currentPresence, setCurrentPresence] = useState<UserPresence[]>([]);
@@ -65,7 +68,7 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
   // Derived state
   const onlineUsers = React.useMemo(() => {
     return currentPresence
-      .filter(presence => presence.status === PresenceStatus.Online)
+      .filter(presence => presence.status === 'Online')
       .map(presence => ({
         id: presence.user_id,
         username: presence.username,
@@ -186,6 +189,13 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
     setLastEvent(null);
   }, []);
 
+  // Retry connection
+  const retry = useCallback(async () => {
+    if (currentProjectIdRef.current) {
+      await connect(currentProjectIdRef.current);
+    }
+  }, [connect]);
+
   // Subscribe to events
   const subscribeToEvents = useCallback((handler: (event: CollaborationEvent) => void) => {
     eventSubscribersRef.current.add(handler);
@@ -203,6 +213,32 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
     }
   }, [isAuthenticated, isConnected, disconnect]);
 
+  // Monitor network status
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('[CollaborationProvider] Network back online');
+      setIsOnline(true);
+      // Attempt to reconnect if we have a project
+      if (currentProjectIdRef.current && isAuthenticated && !isConnected) {
+        retry().catch(console.error);
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('[CollaborationProvider] Network went offline');
+      setIsOnline(false);
+      setConnectionError('Device is offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isAuthenticated, isConnected, retry]);
+
   // Handle visibility changes (for presence updates)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -210,10 +246,10 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
 
       if (document.hidden) {
         // User switched away from tab
-        updatePresence(PresenceStatus.Away).catch(console.error);
+        updatePresence('Away' as PresenceStatus).catch(console.error);
       } else {
         // User returned to tab
-        updatePresence(PresenceStatus.Online).catch(console.error);
+        updatePresence('Online' as PresenceStatus).catch(console.error);
       }
     };
 
@@ -229,7 +265,7 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
     const handleBeforeUnload = () => {
       if (isConnected) {
         // Update to offline status before closing
-        updatePresence(PresenceStatus.Offline).catch(console.error);
+        updatePresence('Offline' as PresenceStatus).catch(console.error);
       }
     };
 
@@ -252,6 +288,7 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
     isConnected,
     isConnecting,
     connectionError,
+    isOnline,
     
     // Presence data
     currentPresence,
@@ -266,6 +303,7 @@ export function CollaborationProvider({ children }: CollaborationProviderProps) 
     disconnect,
     updatePresence,
     clearEvents,
+    retry,
     subscribeToEvents,
   };
 

@@ -322,6 +322,28 @@ export class CollaborationService {
 
   private scheduleReconnect(): void {
     if (this.isDestroyed || this.reconnectTimeout || this.reconnectAttempts >= this.maxReconnectAttempts) {
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('[CollaborationService] Max reconnect attempts reached. Entering offline mode.');
+        this.config?.onConnectionStatus?.(false, 'Connection failed. Working in offline mode.');
+      }
+      return;
+    }
+
+    // Check if we're actually online
+    if (!navigator.onLine) {
+      console.log('[CollaborationService] Device is offline. Will retry when online.');
+      this.config?.onConnectionStatus?.(false, 'Device is offline');
+      
+      // Listen for online event
+      const handleOnline = () => {
+        console.log('[CollaborationService] Device is back online. Attempting to reconnect.');
+        window.removeEventListener('online', handleOnline);
+        if (this.config && !this.isDestroyed) {
+          this.reconnectAttempts = 0; // Reset attempts when back online
+          this.scheduleReconnect();
+        }
+      };
+      window.addEventListener('online', handleOnline);
       return;
     }
 
@@ -341,6 +363,10 @@ export class CollaborationService {
           await this.connect(this.config);
         } catch (error) {
           console.error('[CollaborationService] Reconnect failed:', error);
+          // Continue trying if we haven't hit max attempts
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.scheduleReconnect();
+          }
         }
       }
     }, delay);

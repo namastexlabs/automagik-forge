@@ -18,13 +18,11 @@ import {
   User,
   XCircle,
   Activity,
-  Clock,
   Wifi,
 } from 'lucide-react';
 import { is_planning_executor_type } from '@/lib/utils';
 import { TaskWithUsersAndAttemptStatus } from '@/lib/api';
 import { useCollaboration } from '@/components/context/CollaborationProvider';
-import { PresenceStatus } from 'shared/types';
 
 // Use the combined type from API
 type Task = TaskWithUsersAndAttemptStatus;
@@ -86,7 +84,7 @@ export function TaskCard({
 
   // Get presence info for assigned user
   const assigneePresence = currentPresence.find(p => p.user_id === task.assigned_to);
-  const isAssigneeOnline = assigneePresence?.status === PresenceStatus.Online;
+  const isAssigneeOnline = assigneePresence?.status === 'Online';
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -230,9 +228,9 @@ export function TaskCard({
                   {assigneePresence && (
                     <div 
                       className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${
-                        assigneePresence.status === PresenceStatus.Online 
+                        assigneePresence.status === 'Online' 
                           ? 'bg-green-500 animate-pulse' 
-                          : assigneePresence.status === PresenceStatus.Away
+                          : assigneePresence.status === 'Away'
                           ? 'bg-yellow-500'
                           : 'bg-gray-400'
                       }`}

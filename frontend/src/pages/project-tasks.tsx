@@ -61,9 +61,11 @@ export function ProjectTasks() {
     isConnected, 
     isConnecting,
     connectionError,
+    isOnline,
     currentPresence,
     events,
-    updatePresence
+    updatePresence,
+    retry
   } = useCollaboration();
   
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -187,6 +189,30 @@ export function ProjectTasks() {
     },
     [projectId]
   );
+
+  // Handler for real-time task updates
+  const handleTasksUpdate = useCallback((updatedTasks: Task[]) => {
+    setTasks(updatedTasks);
+    
+    // Update selected task if it was modified
+    setSelectedTask(prev => {
+      if (!prev) return prev;
+      const updatedSelectedTask = updatedTasks.find(task => task.id === prev.id);
+      return updatedSelectedTask || prev;
+    });
+  }, []);
+
+  // Handler for optimistic updates (immediate UI feedback)
+  const handleOptimisticUpdate = useCallback((updatedTasks: Task[]) => {
+    setTasks(updatedTasks);
+    
+    // Update selected task if it was modified
+    setSelectedTask(prev => {
+      if (!prev) return prev;
+      const updatedSelectedTask = updatedTasks.find(task => task.id === prev.id);
+      return updatedSelectedTask || prev;
+    });
+  }, []);
 
   const handleCreateTask = useCallback(
     async (title: string, description: string) => {
@@ -356,15 +382,36 @@ export function ProjectTasks() {
       fetchTasks();
       fetchTemplates();
 
-      // Set up polling to refresh tasks every 5 seconds
+      // Connect to real-time collaboration if authenticated
+      if (isAuthenticated) {
+        connect(projectId).catch(error => {
+          console.error('Failed to connect to collaboration service:', error);
+        });
+      }
+
+      // Set up polling to refresh tasks every 30 seconds (reduced frequency with real-time updates)
       const interval = setInterval(() => {
         fetchTasks(true); // Skip loading spinner for polling
-      }, 2000);
+      }, 30000);
 
       // Cleanup interval on unmount
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        disconnect();
+      };
     }
-  }, [projectId]);
+  }, [projectId, isAuthenticated, connect, disconnect]);
+
+  // Handle authentication state changes
+  useEffect(() => {
+    if (projectId && isAuthenticated && !isConnected && !isConnecting) {
+      connect(projectId).catch(error => {
+        console.error('Failed to connect to collaboration service:', error);
+      });
+    } else if (!isAuthenticated && isConnected) {
+      disconnect();
+    }
+  }, [projectId, isAuthenticated, isConnected, isConnecting, connect, disconnect]);
 
   // Handle direct navigation to task URLs
   useEffect(() => {
@@ -442,6 +489,15 @@ export function ProjectTasks() {
             <Button onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
               Add Task
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowCollaborationPanel(!showCollaborationPanel)}
+              className={showCollaborationPanel ? 'bg-primary/10' : ''}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Team ({currentPresence.filter(p => p.status === 'Online').length})
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -534,6 +590,8 @@ export function ProjectTasks() {
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
                 onViewTaskDetails={handleViewTaskDetails}
+                onTasksUpdate={handleTasksUpdate}
+                onOptimisticUpdate={handleOptimisticUpdate}
                 isPanelOpen={isPanelOpen}
               />
             </div>
@@ -552,6 +610,57 @@ export function ProjectTasks() {
           onDeleteTask={handleDeleteTask}
           isDialogOpen={isTaskDialogOpen || isProjectSettingsOpen}
         />
+      )}
+
+      {/* Collaboration Panel - Floating */}
+      {showCollaborationPanel && (
+        <div className="fixed right-4 bottom-4 top-20 w-80 z-40 flex flex-col space-y-4">
+          <div className="flex-1 max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col space-y-4">
+            {/* Connection Status and Controls */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Team Collaboration</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCollaborationPanel(false)}
+                    className="h-6 w-6 p-0"
+                  >
+                    ×
+                  </Button>
+                </div>
+                <ConnectionStatus 
+                  isConnected={isConnected}
+                  isConnecting={isConnecting}
+                  error={connectionError}
+                  isOnline={isOnline}
+                  onRetry={retry}
+                />
+              </CardContent>
+            </Card>
+
+            {/* User Presence */}
+            <div className="flex-1 overflow-hidden">
+              <UserPresenceList 
+                presence={currentPresence}
+                className="h-full"
+              />
+            </div>
+
+            {/* Activity Feed */}
+            <div className="flex-1 overflow-hidden">
+              <ActivityIndicator 
+                events={events}
+                maxEvents={10}
+                className="h-full"
+              />
+            </div>
+
+            {/* Notification Settings */}
+            <NotificationSettings />
+          </div>
+        </div>
       )}
 
       {/* Dialogs - rendered at main container level to avoid stacking issues */}

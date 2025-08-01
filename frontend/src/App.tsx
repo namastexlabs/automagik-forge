@@ -11,6 +11,9 @@ import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { ConfigProvider, useConfig } from '@/components/config-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { CollaborationProvider } from '@/components/context/CollaborationProvider';
+import { ToastProvider } from '@/components/ui/toast';
+import { CollaborationNotificationHandler } from '@/components/collaboration/CollaborationNotifications';
 import type { EditorType, ExecutorConfig } from 'shared/types';
 import { configApi } from '@/lib/api';
 import * as Sentry from '@sentry/react';
@@ -109,6 +112,9 @@ function AppContent() {
   return (
     <ThemeProvider initialTheme={config?.theme || 'system'}>
       <div className="h-screen flex flex-col bg-background">
+        {/* Real-time collaboration notification handler */}
+        <CollaborationNotificationHandler />
+        
         <GitHubLoginDialog
           open={showGitHubLogin}
           onOpenChange={handleGitHubLoginComplete}
@@ -151,7 +157,11 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ConfigProvider>
-          <AppContent />
+          <ToastProvider>
+            <CollaborationProvider>
+              <AppContent />
+            </CollaborationProvider>
+          </ToastProvider>
         </ConfigProvider>
       </AuthProvider>
     </BrowserRouter>

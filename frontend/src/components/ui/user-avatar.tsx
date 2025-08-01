@@ -38,11 +38,11 @@ export function UserAvatar({
 
   const getPresenceColor = (status?: PresenceStatus) => {
     switch (status) {
-      case PresenceStatus.Online:
+      case 'Online':
         return 'bg-green-500 animate-pulse';
-      case PresenceStatus.Away:
+      case 'Away':
         return 'bg-yellow-500';
-      case PresenceStatus.Offline:
+      case 'Offline':
         return 'bg-gray-400';
       default:
         return 'bg-gray-400';

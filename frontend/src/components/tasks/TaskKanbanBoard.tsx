@@ -81,8 +81,10 @@ function TaskKanbanBoard({
     isConnected, 
     isConnecting, 
     connectionError, 
+    isOnline,
     onlineUsers, 
-    lastEvent 
+    lastEvent,
+    retry
   } = useCollaboration();
   
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -188,6 +190,8 @@ function TaskKanbanBoard({
             isConnected={isConnected}
             isConnecting={isConnecting}
             error={connectionError}
+            isOnline={isOnline}
+            onRetry={retry}
           />
           <OnlineUserBadge onlineCount={onlineUsers.length} />
           {onlineUsers.length > 0 && (

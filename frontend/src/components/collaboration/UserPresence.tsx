@@ -1,4 +1,3 @@
-import React from 'react';
 import { UserPresence as UserPresenceType, PresenceStatus } from 'shared/types';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +11,9 @@ interface UserPresenceListProps {
 }
 
 export function UserPresenceList({ presence, className = '' }: UserPresenceListProps) {
-  const onlineUsers = presence.filter(p => p.status === PresenceStatus.Online);
-  const awayUsers = presence.filter(p => p.status === PresenceStatus.Away);
-  const offlineUsers = presence.filter(p => p.status === PresenceStatus.Offline);
+  const onlineUsers = presence.filter(p => p.status === 'Online');
+  const awayUsers = presence.filter(p => p.status === 'Away');
+  const offlineUsers = presence.filter(p => p.status === 'Offline');
 
   if (presence.length === 0) {
     return (
@@ -96,11 +95,11 @@ interface UserPresenceItemProps {
 function UserPresenceItem({ presence }: UserPresenceItemProps) {
   const getStatusInfo = (status: PresenceStatus) => {
     switch (status) {
-      case PresenceStatus.Online:
+      case 'Online':
         return { color: 'bg-green-500', icon: Wifi, label: 'Online' };
-      case PresenceStatus.Away:
+      case 'Away':
         return { color: 'bg-yellow-500', icon: Clock, label: 'Away' };
-      case PresenceStatus.Offline:
+      case 'Offline':
         return { color: 'bg-gray-400', icon: WifiOff, label: 'Offline' };
       default:
         return { color: 'bg-gray-400', icon: WifiOff, label: 'Unknown' };
@@ -115,7 +114,7 @@ function UserPresenceItem({ presence }: UserPresenceItemProps) {
   const minutesAgo = Math.floor(timeDiff / (1000 * 60));
 
   const getTimeAgoString = () => {
-    if (presence.status === PresenceStatus.Online) {
+    if (presence.status === 'Online') {
       return 'Active now';
     }
     
@@ -194,6 +193,8 @@ interface ConnectionStatusProps {
   isConnected: boolean;
   isConnecting: boolean;
   error?: string | null;
+  isOnline?: boolean;
+  onRetry?: () => void;
   className?: string;
 }
 
@@ -201,8 +202,23 @@ export function ConnectionStatus({
   isConnected, 
   isConnecting, 
   error, 
+  isOnline = true,
+  onRetry,
   className = '' 
 }: ConnectionStatusProps) {
+  // Show device offline status first
+  if (!isOnline) {
+    return (
+      <div className={`${className} flex items-center space-x-2`}>
+        <Badge variant="destructive" className="flex items-center space-x-1">
+          <WifiOff className="h-3 w-3" />
+          <span className="text-xs">Device Offline</span>
+        </Badge>
+        <span className="text-xs text-muted-foreground">Check your internet connection</span>
+      </div>
+    );
+  }
+
   if (isConnecting) {
     return (
       <Badge variant="outline" className={`${className} flex items-center space-x-1`}>
@@ -212,17 +228,41 @@ export function ConnectionStatus({
     );
   }
 
+  if (error && onRetry) {
+    return (
+      <div className={`${className} flex items-center space-x-2`}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="destructive" className="flex items-center space-x-1">
+              <WifiOff className="h-3 w-3" />
+              <span className="text-xs">Connection Failed</span>
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">{error}</p>
+          </TooltipContent>
+        </Tooltip>
+        <button
+          onClick={onRetry}
+          className="text-xs text-blue-600 hover:text-blue-800 underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge variant="destructive" className={`${className} flex items-center space-x-1`}>
             <WifiOff className="h-3 w-3" />
-            <span className="text-xs">Offline</span>
+            <span className="text-xs">Connection Error</span>
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p className="text-xs">Connection error: {error}</p>
+          <p className="text-xs">{error}</p>
         </TooltipContent>
       </Tooltip>
     );
@@ -241,7 +281,7 @@ export function ConnectionStatus({
   return (
     <Badge variant="outline" className={`${className} flex items-center space-x-1`}>
       <WifiOff className="h-3 w-3" />
-      <span className="text-xs">Offline</span>
+      <span className="text-xs">Disconnected</span>
     </Badge>
   );
 }
