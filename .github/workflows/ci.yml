@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check Rust formatting
+      run: cargo fmt --all -- --check
+      working-directory: backend
+    
+    - name: Run Clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+      working-directory: backend
+      
+    - name: Setup temporary database for compilation
+      run: |
+        mkdir -p dev_assets
+        touch dev_assets/db.sqlite
+        DATABASE_URL="sqlite:dev_assets/db.sqlite" cargo sqlx database create --database-url "sqlite:dev_assets/db.sqlite" || true
+        DATABASE_URL="sqlite:dev_assets/db.sqlite" cargo sqlx migrate run --source backend/migrations || true
+      
+    - name: Build backend
+      run: cargo build --verbose
+      working-directory: backend
+      env:
+        DATABASE_URL: "sqlite:../dev_assets/db.sqlite"
+    
+    - name: Run backend tests
+      run: cargo test --verbose --lib
+      working-directory: backend
+      env:
+        DATABASE_URL: "sqlite:../dev_assets/db.sqlite"
+    
+    - name: Check TypeScript
+      run: npm run frontend:check
+    
+    - name: Build frontend
+      run: npm run frontend:build
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Setup temporary database for compilation
+      run: |
+        mkdir -p dev_assets
+        touch dev_assets/db.sqlite
+        DATABASE_URL="sqlite:dev_assets/db.sqlite" cargo sqlx database create --database-url "sqlite:dev_assets/db.sqlite" || true
+        DATABASE_URL="sqlite:dev_assets/db.sqlite" cargo sqlx migrate run --source backend/migrations || true
+    
+    - name: Build release
+      run: cargo build --release
+      working-directory: backend
+      env:
+        DATABASE_URL: "sqlite:../dev_assets/db.sqlite"
