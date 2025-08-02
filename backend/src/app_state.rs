@@ -6,6 +6,7 @@ use tokio::sync::{Mutex, RwLock as TokioRwLock};
 use uuid::Uuid;
 
 use crate::{
+    auth::JwtConfig,
     services::{generate_user_id, AnalyticsConfig, AnalyticsService},
     security::audit_logger::AuditLogger,
 };
@@ -34,6 +35,7 @@ pub struct AppState {
     #[allow(dead_code)] // Security audit system for future compliance features
     pub audit_logger: AuditLogger,
     user_id: String,
+    jwt_config: Arc<JwtConfig>,
 }
 
 impl AppState {
@@ -53,6 +55,9 @@ impl AppState {
         // Initialize audit logger
         let audit_logger = AuditLogger::new(db_pool.clone());
 
+        // Load JWT config ONCE at startup to prevent race conditions
+        let jwt_config = Arc::new(JwtConfig::from_config());
+
         Self {
             running_executions: Arc::new(Mutex::new(HashMap::new())),
             db_pool,
@@ -60,6 +65,7 @@ impl AppState {
             analytics,
             audit_logger,
             user_id: generate_user_id(),
+            jwt_config,
         }
     }
 
@@ -190,6 +196,10 @@ impl AppState {
 
     pub fn get_config(&self) -> &Arc<tokio::sync::RwLock<crate::models::config::Config>> {
         &self.config
+    }
+
+    pub fn get_jwt_config(&self) -> &Arc<JwtConfig> {
+        &self.jwt_config
     }
 
     pub async fn track_analytics_event(

@@ -33,7 +33,64 @@ import {
   WorktreeDiff,
 } from 'shared/types';
 
-export const makeRequest = async (url: string, options: RequestInit = {}) => {
+// Extend RequestInit to include our custom skipAuthInterceptor option
+interface ExtendedRequestInit extends RequestInit {
+  skipAuthInterceptor?: boolean;
+}
+
+// Global flag to prevent multiple simultaneous logout attempts
+let isLoggingOut = false;
+
+// Allow registration of a global logout handler from the AuthProvider
+let globalLogoutHandler: (() => void) | null = null;
+
+export const registerLogoutHandler = (handler: () => void) => {
+  globalLogoutHandler = handler;
+};
+
+export const unregisterLogoutHandler = () => {
+  globalLogoutHandler = null;
+};
+
+const handleUnauthorized = () => {
+  // Prevent multiple simultaneous logout attempts
+  if (isLoggingOut) {
+    return;
+  }
+  
+  isLoggingOut = true;
+  
+  console.warn('[Auth] Session expired, clearing auth data and redirecting to login');
+  
+  // Clear all auth-related data from localStorage
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('userInfo');
+  
+  // Clear any session storage as well
+  sessionStorage.clear();
+  
+  // If we have a registered logout handler (from AuthProvider), use it
+  // This allows the AuthProvider to properly clean up its state
+  if (globalLogoutHandler) {
+    try {
+      globalLogoutHandler();
+    } catch (error) {
+      console.error('[Auth] Error in logout handler:', error);
+    }
+  }
+  
+  // Small delay to ensure state cleanup completes before redirect
+  setTimeout(() => {
+    // Redirect to root - the auth provider will handle redirecting to login
+    window.location.href = '/';
+    
+    // Reset the flag after redirect
+    isLoggingOut = false;
+  }, 100);
+};
+
+export const makeRequest = async (url: string, options: ExtendedRequestInit = {}) => {
   const token = localStorage.getItem('auth_token');
   const headers = {
     'Content-Type': 'application/json',
@@ -41,10 +98,25 @@ export const makeRequest = async (url: string, options: RequestInit = {}) => {
     ...(options.headers || {}),
   };
 
-  return fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  // Intercept 401 responses at the lowest level
+  if (response.status === 401) {
+    // Check if this is a request that should NOT trigger the global logout handler
+    // (e.g., the auth/me endpoint used by refreshUser during app initialization)
+    const skipGlobalLogout = options.skipAuthInterceptor === true || url.includes('/api/auth/me');
+    
+    if (!skipGlobalLogout) {
+      handleUnauthorized();
+    }
+    
+    throw new ApiError('Session expired. Please log in again.', response.status, response);
+  }
+
+  return response;
 };
 
 export interface ApiResponse<T> {
@@ -622,20 +694,7 @@ export const mcpServersApi = {
         body: JSON.stringify(serversConfig),
       }
     );
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[API Error] Failed to save MCP servers', {
-        message: errorData.message,
-        status: response.status,
-        response,
-        timestamp: new Date().toISOString(),
-      });
-      throw new ApiError(
-        errorData.message || 'Failed to save MCP servers',
-        response.status,
-        response
-      );
-    }
+    return handleApiResponse<void>(response);
   },
 };
 

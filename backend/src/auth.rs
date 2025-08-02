@@ -132,8 +132,8 @@ pub async fn auth_middleware(
     mut req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Get JWT config from environment or default
-    let jwt_config = JwtConfig::default();
+    // Get cached JWT config from app state (prevents race conditions)
+    let jwt_config = app_state.get_jwt_config();
 
     // Extract token from Authorization header
     let token = req
@@ -147,7 +147,7 @@ pub async fn auth_middleware(
         })?;
 
     // Validate JWT token
-    let claims = validate_jwt_token(token, &jwt_config).map_err(|e| {
+    let claims = validate_jwt_token(token, jwt_config).map_err(|e| {
         tracing::debug!("JWT validation failed: {}", e);
         StatusCode::UNAUTHORIZED
     })?;
@@ -222,9 +222,9 @@ pub async fn optional_auth_middleware(
         .and_then(|header| header.to_str().ok())
     {
         if let Some(token) = extract_bearer_token(auth_header) {
-            let jwt_config = JwtConfig::default();
+            let jwt_config = app_state.get_jwt_config();
             
-            if let Ok(claims) = validate_jwt_token(token, &jwt_config) {
+            if let Ok(claims) = validate_jwt_token(token, jwt_config) {
                 if let (Ok(user_id), Ok(session_id)) = (
                     Uuid::parse_str(&claims.sub),
                     Uuid::parse_str(&claims.session_id),

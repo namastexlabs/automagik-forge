@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, UserSession } from 'shared/types';
-import { authApi } from '@/lib/api';
+import { authApi, registerLogoutHandler, unregisterLogoutHandler } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +32,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAuthenticated = !!user && !!session;
+
+  // Handle logout from the API interceptor (when 401 is detected)
+  const handleInterceptorLogout = () => {
+    console.log('[AuthProvider] Handling interceptor logout');
+    setUser(null);
+    setSession(null);
+  };
 
   const login = (token: string, userData: User, sessionData: UserSession) => {
     localStorage.setItem('auth_token', token);
@@ -84,6 +91,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize authentication state on mount
   useEffect(() => {
     refreshUser();
+  }, []);
+
+  // Register/unregister the interceptor logout handler
+  useEffect(() => {
+    registerLogoutHandler(handleInterceptorLogout);
+    return () => {
+      unregisterLogoutHandler();
+    };
   }, []);
 
   const value: AuthContextType = {
