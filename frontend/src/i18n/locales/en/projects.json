@@ -3,6 +3,11 @@
   "subtitle": "Manage your projects and track their progress",
   "createProject": "Create Project",
   "loading": "Loading projects...",
+  "search": {
+    "placeholder": "Search projects...",
+    "noResults": "No projects found",
+    "noResultsDescription": "Try adjusting your search terms"
+  },
   "sort": {
     "activity": "Recent Activity",
     "created": "Date Created",

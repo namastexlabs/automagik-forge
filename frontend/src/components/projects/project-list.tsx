@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { H1, H3 } from '@/components/ui/typography';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import {
   Plus,
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  Search,
 } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, Scope } from '@/keyboard';
@@ -50,6 +52,8 @@ export function ProjectList() {
     const saved = localStorage.getItem(STORAGE_KEY_DIR);
     return (saved as SortDirection) || 'desc';
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -113,11 +117,29 @@ export function ProjectList() {
     localStorage.setItem(STORAGE_KEY_DIR, newDirection);
   };
 
-  // Memoize sorted projects to avoid recomputing on every render
-  const sortedProjects = useMemo(() => {
-    const sorted = [...projects];
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    // Restore focus after state update
+    requestAnimationFrame(() => {
+      if (document.activeElement !== searchInputRef.current) {
+        searchInputRef.current?.focus();
+      }
+    });
+  }, []);
 
-    // First sort by field
+  // Memoize sorted and filtered projects to avoid recomputing on every render
+  const sortedProjects = useMemo(() => {
+    let sorted = [...projects];
+
+    // First filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      sorted = sorted.filter((project) =>
+        project.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Then sort by field
     switch (sortField) {
       case 'activity':
         sorted.sort((a, b) => {
@@ -143,7 +165,7 @@ export function ProjectList() {
     }
 
     return sorted;
-  }, [projects, projectActivity, sortField, sortDirection]);
+  }, [projects, projectActivity, sortField, sortDirection, searchQuery]);
 
   // Semantic keyboard shortcut for creating new project
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
@@ -154,10 +176,10 @@ export function ProjectList() {
 
   // Set initial focus when projects are loaded
   useEffect(() => {
-    if (sortedProjects.length > 0 && !focusedProjectId) {
-      setFocusedProjectId(sortedProjects[0].id);
+    if (projects.length > 0 && !focusedProjectId) {
+      setFocusedProjectId(projects[0].id);
     }
-  }, [sortedProjects, focusedProjectId]);
+  }, [projects.length, focusedProjectId]);
 
   useEffect(() => {
     fetchProjects();
@@ -172,6 +194,17 @@ export function ProjectList() {
           <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <div key="search-input" className="relative w-[200px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              type="text"
+              placeholder={t('search.placeholder')}
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="pl-8"
+            />
+          </div>
           <Select value={sortField} onValueChange={handleSortFieldChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
@@ -231,6 +264,18 @@ export function ProjectList() {
               <Plus className="mr-2 h-4 w-4" />
               {t('empty.createFirst')}
             </Button>
+          </CardContent>
+        </Card>
+      ) : sortedProjects.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+              <Search className="h-6 w-6" />
+            </div>
+            <H3 className="mt-4">{t('search.noResults')}</H3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t('search.noResultsDescription')}
+            </p>
           </CardContent>
         </Card>
       ) : (
