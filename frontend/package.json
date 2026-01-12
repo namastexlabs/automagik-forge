@@ -18,6 +18,9 @@
     "lint:dead-code:trace": "knip --trace",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "cap:run:android": "npx cap run android",
@@ -86,6 +89,9 @@
     "@rjsf/utils": "6.0.0-beta.11",
     "@rjsf/validator-ajv8": "6.0.0-beta.11",
     "@tailwindcss/container-queries": "^0.1.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/lodash": "^4.17.20",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -102,11 +108,14 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "jsdom": "^25.0.1",
     "knip": "^5.70.2",
+    "msw": "^2.6.6",
     "postcss": "^8.4.32",
     "prettier": "^3.6.1",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.9.2",
-    "vite": "^5.0.8"
+    "vite": "^5.0.8",
+    "vitest": "^2.1.6"
   }
 }
