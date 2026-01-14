@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
+import { useGlobalStreamStatus } from './useGlobalStreamStatus';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
@@ -41,6 +42,33 @@ export const useJsonPatchWsStream = <T>(
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+
+  // Global stream status tracking
+  const streamId = useId();
+  const updateStream = useGlobalStreamStatus((s) => s.updateStream);
+  const removeStream = useGlobalStreamStatus((s) => s.removeStream);
+
+  // Register/update stream status with global tracker
+  useEffect(() => {
+    if (enabled && endpoint) {
+      // Extract a friendly name from the endpoint
+      const streamName = endpoint.includes('tasks/stream')
+        ? 'Tasks'
+        : endpoint.includes('diff/ws')
+          ? 'Diff'
+          : endpoint.includes('logs/ws')
+            ? 'Logs'
+            : endpoint.includes('execution-processes')
+              ? 'Processes'
+              : endpoint.includes('drafts/stream')
+                ? 'Drafts'
+                : 'Stream';
+      updateStream(streamId, streamName, isConnected, error);
+    }
+    return () => {
+      removeStream(streamId);
+    };
+  }, [streamId, endpoint, enabled, isConnected, error, updateStream, removeStream]);
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled

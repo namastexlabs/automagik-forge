@@ -31,6 +31,7 @@ import { Breadcrumb } from '@/components/breadcrumb';
 import { useTheme } from '@/components/theme-provider';
 import { getActualTheme } from '@/utils/theme';
 import { ThemeMode } from 'shared/types';
+import { NavbarConnectionStatus } from '@/components/NavbarConnectionStatus';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -147,6 +148,7 @@ export function Navbar() {
                   : 'online'}
               </span>
             </a>
+            <NavbarConnectionStatus />
           </div>
 
           <SearchBar
