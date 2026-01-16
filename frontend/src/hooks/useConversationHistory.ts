@@ -158,7 +158,7 @@ export const useConversationHistory = ({
   const getLiveExecutionProcess = (
     executionProcessId: string
   ): ExecutionProcess | undefined => {
-    return executionProcesses?.current.find(
+    return executionProcesses.current?.find(
       (executionProcess) => executionProcess.id === executionProcessId
     );
   };
@@ -219,15 +219,15 @@ export const useConversationHistory = ({
   };
 
   const getActiveAgentProcess = (): ExecutionProcess | null => {
-    const activeProcesses = executionProcesses?.current.filter(
+    const activeProcesses = executionProcesses.current?.filter(
       (p) =>
         p.status === ExecutionProcessStatus.running &&
         p.run_reason !== 'devserver'
-    );
+    ) ?? [];
     if (activeProcesses.length > 1) {
       console.error('More than one active execution process found');
     }
-    return activeProcesses[0] || null;
+    return activeProcesses[0] ?? null;
   };
 
   const flattenEntries = (

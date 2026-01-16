@@ -16,6 +16,18 @@ import type {
   UpdateTask,
 } from 'shared/types';
 
+// Helper to safely extract executor string from various object shapes
+const getExecutorString = (obj: unknown): string => {
+  if (!obj || typeof obj !== 'object') return 'unknown';
+  const record = obj as Record<string, unknown>;
+  if (typeof record.executor === 'string') return record.executor;
+  if (record.executor_profile && typeof record.executor_profile === 'object') {
+    const profile = record.executor_profile as Record<string, unknown>;
+    if (typeof profile.executor === 'string') return profile.executor;
+  }
+  return 'unknown';
+};
+
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
@@ -41,12 +53,9 @@ export function useTaskMutations(projectId?: string) {
       // Track task creation with analytics
       // Note: executor info is not in CreateTask, will be tracked from config
       trackTaskCreated({
-        executor: ((
-          createdTask as Task & { executor_profile?: { executor?: string } }
-        ).executor_profile?.executor ||
-          'unknown') as import('@/types/analytics').ExecutorType,
+        executor: getExecutorString(createdTask),
         has_description: !!variables.description,
-        prompt_length: variables.description?.length || 0,
+        prompt_length: variables.description?.length ?? 0,
         is_subtask: !!variables.parent_task_attempt,
       });
 
@@ -69,9 +78,9 @@ export function useTaskMutations(projectId?: string) {
     ) => {
       // Track task creation with analytics
       trackTaskCreated({
-        executor: variables.executor_profile_id.executor || 'unknown',
+        executor: getExecutorString(variables.executor_profile_id),
         has_description: !!variables.task.description,
-        prompt_length: variables.task.description?.length || 0,
+        prompt_length: variables.task.description?.length ?? 0,
         is_subtask: !!variables.task.parent_task_attempt,
       });
 
@@ -104,11 +113,7 @@ export function useTaskMutations(projectId?: string) {
         try {
           const attempts = await attemptsApi.getAll(updatedTask.id);
           const latestAttempt = attempts[0]; // Sorted newest first
-          const executorStr =
-            (latestAttempt as { executor?: string } | undefined)?.executor ||
-            'unknown';
-          const executor =
-            executorStr as import('@/types/analytics').ExecutorType;
+          const executor = getExecutorString(latestAttempt);
           const attemptCount = attempts.length;
 
           trackTaskCompleted({
