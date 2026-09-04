@@ -9,7 +9,14 @@
       ]
     },
     "forge": {
-      "command": "/home/namastex/workspace/automagik-forge/forge-core/target/debug/mcp_task_server"
+      "command": "./forge-core/target/debug/mcp_task_server"
+    },
+    "knos": {
+      "command": "python",
+      "args": [
+        "-m",
+        "knos.mcp"
+      ]
     }
   }
 }
